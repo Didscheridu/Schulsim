@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>SchulSim AI 6.1 (Stealth & Plan)</title>
+    <title>SchulSim AI 6.1 (Ultimate)</title>
     
     <!-- Frameworks -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,7 +24,7 @@
                         'fade-in': 'fadeIn 0.5s ease-out forwards',
                         'blob': 'blob 10s infinite',
                         'scan': 'scan 2s linear infinite',
-                        'type': 'type 1s steps(20, end) infinite'
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                     },
                     keyframes: {
                         fadeIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
@@ -37,32 +37,47 @@
     </script>
     <style>
         body { background-color: #020617; color: #f8fafc; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
-        .glass:hover { border-color: rgba(56, 189, 248, 0.4); transform: translateY(-2px); transition: all 0.3s; }
+        
+        /* Glassmorphism */
+        .glass { 
+            background: rgba(30, 41, 59, 0.4); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); 
+        }
+        .glass:hover { 
+            border-color: rgba(56, 189, 248, 0.4); 
+            transform: translateY(-4px); 
+            background: rgba(30, 41, 59, 0.6);
+            transition: all 0.3s; 
+        }
+        
+        /* Aurora Background */
+        .bg-aurora {
+            background: radial-gradient(circle at 50% 50%, #1e1b4b, #0f172a, #000000);
+            background-size: 200% 200%;
+        }
+
         .h-dvh { height: 100dvh; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
     </style>
 </head>
-<body class="m-0 p-0">
+<body class="m-0 p-0 text-slate-200">
     <div id="root" class="h-full w-full"></div>
 
     <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
         // ==========================================
         // STEALTH KONFIGURATION
         // ==========================================
-        
-        // 1. Die erste Hälfte deines Keys (Ganz normal)
+        // Teile deinen Key hier auf.
         const KEY_PART_1 = "AIzaSyCb4nqoilymX4lPn9EOUsZq-"; 
-
-        // 2. Die zweite Hälfte (RÜCKWÄRTS geschrieben!)
-        // Beispiel: Endet der Key auf "...xyz", schreibst du hier "zyx..."
         const KEY_PART_2 = "oKnIISDWAg"; 
-        
         // ==========================================
-
-        const { useState, useEffect, useRef } = React;
 
         // --- ICONS ---
         const Icon = ({ d, size = 24, className = "" }) => (
@@ -88,7 +103,11 @@
             Sparkles: "m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z M5 3v4 M9 3v4 M3 7h4",
             FileText: "M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z M14 2L14 8 20 8 M16 13H8 M16 17H8 M10 9H8",
             Calendar: "M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
-            Mouse: "M12 6v4 M12 2a7 7 0 0 0-7 7v6a7 7 0 0 0 14 0V9a7 7 0 0 0-7-7z"
+            Mouse: "M12 6v4 M12 2a7 7 0 0 0-7 7v6a7 7 0 0 0 14 0V9a7 7 0 0 0-7-7z",
+            Lock: "M7 11V7a5 5 0 0 1 10 0v4 M3 11h18v11H3z",
+            Cookie: "M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5 M8.5 8.5v.01 M16 15.5v.01 M12 12v.01 M11 17v.01 M7 14v.01",
+            Scale: "m16 16 3-8 3 8c-.87.65-1.926 1-3 1s-2.13-.35-3-1Z m-14 0 3-8 3 8c-.87.65-1.926 1-3 1s-2.13-.35-3-1Z M7 21h10 M12 3v18 M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2",
+            X: "M18 6L6 18M6 6l12 12"
         };
 
         const DESIGNS = {
@@ -115,12 +134,9 @@
             return <span className="whitespace-pre-wrap">{display.split('**').map((s,i) => i%2===1 ? <strong key={i} className="text-nexus-500 font-bold">{s}</strong> : s)}</span>;
         };
 
-        // --- KEY ASSEMBLER (RÜCKWÄRTS-LOGIK) ---
+        // --- KEY ASSEMBLER ---
         const getKey = () => {
-            // Teil 1 + Teil 2 (wieder umgedreht)
             const k = KEY_PART_1 + KEY_PART_2.split('').reverse().join('');
-            
-            // Check ob noch Platzhalter da sind (GitHub Secrets etc.)
             if(k.includes("__GEMINI") || k === "") return localStorage.getItem('gemini_key') || "";
             return k;
         };
@@ -133,9 +149,8 @@
             } catch (e) { return null; }
         };
 
-        // Echte Bildprüfung
         const verifyImageQuality = async (imgUrl, topic, key) => {
-            if (!key || key.includes("__GEMINI")) return true;
+            if (!key) return true;
             const base64 = await urlToBase64(imgUrl);
             if (!base64) return true;
             try {
@@ -169,12 +184,11 @@
                     return pages[0].imageinfo[0].url;
                 }
             } catch (e) {}
-            // Fallback auf Pollinations (fotorealistisch)
-            return `https://image.pollinations.ai/prompt/${encodeURIComponent(query + " photorealistic 4k")}?width=800&height=600&nologo=true`;
+            return `https://image.pollinations.ai/prompt/${encodeURIComponent(query)}?width=800&height=600&nologo=true`;
         };
 
         const generateContent = async (history, prompt, imageData, mode, key, settings) => {
-            if (!key) return "FEHLER: API Key fehlt. Bitte im Code eintragen.";
+            if (!key) return "FEHLER: Bitte trage zuerst deinen API Key ein!";
             const parts = [{ text: prompt }];
             if (imageData) parts.push({ inlineData: { mimeType: "image/png", data: imageData } });
 
@@ -186,9 +200,11 @@
                 Layouts: image_right, image_left, title_only. 
                 WICHTIG: KEIN Markdown. Nur valides JSON.`;
             } else if (mode === 'plan') {
-                 systemPrompt = `Erstelle JSON Lernplan. Format: [{"day":"Montag","task":"...","type":"Lernen"}].`;
+                 systemPrompt = `Erstelle JSON Lernplan. Format: [{"day":"Montag","task":"...","type":"Lernen"}]. Sei realistisch.`;
             } else if (mode === 'homework_solve') {
                 systemPrompt = "Du bist ein 1er-Schüler. Löse die Aufgabe direkt, korrekt und mit Lösungsweg. Keine langen Erklärungen, nur die Lösung zum Abschreiben.";
+            } else if (mode === 'correction') {
+                 systemPrompt = "Du bist Lehrer. Korrigiere den Text/das Bild. Zeige Fehler auf und gib die richtige Version an.";
             } else {
                 systemPrompt = `Du bist 'Herr Lehrer'. Modus: ${mode}. Erkläre fachlich korrekt aber einfach. Nutze Absätze, Listen, **Fett**. KEINE LaTeX Formeln.`;
             }
@@ -232,9 +248,11 @@
             const [file, setFile] = useState(null);
             const [showKey, setShowKey] = useState(false);
             
-            // Settings
             const [presSettings, setPresSettings] = useState({ count: 5, design: 'modern', audience: 'Klasse 5-10', detail: 'Mittel' });
             const [planOpts, setPlanOpts] = useState({ goal: '', date: '' });
+            
+            const [showLegal, setShowLegal] = useState(false);
+            const [showCookieBanner, setShowCookieBanner] = useState(true);
 
             const chatEndRef = useRef(null);
 
@@ -244,17 +262,17 @@
                 setKey(k); localStorage.setItem('gemini_key', k); setShowKey(false);
             };
 
-            const reset = () => { setView("intro"); setTopic(""); setMessages([]); setSlides([]); setCurrentImg(null); setFileData(null); };
+            const reset = () => { setView("intro"); setTopic(""); setMessages([]); setSlides([]); setPlan([]); setCurrentImg(null); setFile(null); };
 
             const handleFile = (e) => {
                 const f = e.target.files[0];
                 if(f) { const r = new FileReader(); r.onload=ev=>setFile(ev.target.result); r.readAsDataURL(f); }
+                e.target.value = "";
             };
 
             const handleReloadImage = () => {
                  setLoadText("Suche Alternative...");
                  const query = mode === 'presentation' ? slides[slideIdx].imagePrompt || topic : topic;
-                 // Force Pollinations with new seed for variety
                  const seed = Math.floor(Math.random() * 99999);
                  const newImg = `https://image.pollinations.ai/prompt/${encodeURIComponent(query)}?width=800&height=600&nologo=true&seed=${seed}`;
                  if (mode === 'presentation' && slides.length > 0) {
@@ -264,7 +282,7 @@
             };
 
             const handleStart = async (m, sub = null) => {
-                if (!topic && !file && mode!=='plan') { alert("Bitte Thema oder Bild wählen."); return; }
+                if (!topic && !file && mode!=='plan') { alert("Bitte Thema eingeben!"); return; }
                 if (!key) { setShowKey(true); return; }
                 
                 setView("classroom"); setLoading(true); setMessages([]);
@@ -294,9 +312,10 @@
                         setLoadText("Erstelle Lernplan...");
                         const json = await generateContent([], `Ziel: ${planOpts.goal}. Datum: ${planOpts.date}`, null, 'plan', key);
                         setPlan(JSON.parse(json));
+                        setLoadText(null);
                     } else {
                         setLoadText("Herr Lehrer denkt nach...");
-                        if (!currentImg && !file && modeName !== 'homework_solve') {
+                        if (!currentImg && !file && modeName !== 'homework_solve' && modeName !== 'correction') {
                              searchInternetImage(topic, (t)=>setLoadText(t), key).then(img => { setCurrentImg(img); setLoadText(null); });
                         }
                         const res = await generateContent([], prompt, file?.split(',')[1], modeName, key);
@@ -307,6 +326,7 @@
             };
 
             const handleSend = async () => { if (!input.trim()) return; const newMsg = [...messages, {role:'user', parts:[{text:input}]}]; setMessages(newMsg); setInput(''); setLoading(true); const r = await generateContent(newMsg, input, null, mode, key); setMessages(p => [...p, {role:'model', parts:[{text:r}]}]); setLoading(false); };
+            const handleDownloadImage = () => { if (!currentImg) return; const link = document.createElement('a'); link.href = currentImg; link.download = `SchulSim.png`; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
             
             const downloadPPT = () => {
                 const pptx = new window.PptxGenJS(); pptx.layout = 'LAYOUT_16x9';
@@ -325,16 +345,17 @@
 
             // --- RENDER ---
             if (view === 'intro') return (
-                <div className="h-dvh bg-slate-950 text-white flex flex-col font-sans overflow-y-auto relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-black -z-10"></div>
+                <div className="h-dvh bg-slate-950 text-white flex flex-col font-sans overflow-y-auto relative bg-aurora">
+                    <div className="fixed inset-0 bg-slate-900/80 -z-10"></div>
                     
                     <div className="z-10 flex flex-col items-center pt-10 pb-6 px-4 animate-fade-in-up">
                         <div className="inline-block p-5 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-3xl shadow-2xl mb-4"><Icon d={PATHS.GraduationCap} size={56} /></div>
                         <h1 className="text-5xl font-black mb-2 tracking-tight">SchulSim AI 6.1</h1>
-                        <p className="text-cyan-400 font-bold tracking-widest text-xs uppercase">Stealth & Plan Edition</p>
-                        <button onClick={()=>setShowKey(true)} className={`mt-4 px-3 py-1 rounded-full border text-xs font-bold flex gap-2 ${key ? 'border-cyan-500 text-cyan-400 bg-cyan-900/20' : 'border-red-500 text-red-400'}`}>
-                           <Icon d={PATHS.Key} size={14}/> {key ? "System Bereit" : "Key fehlt"}
-                        </button>
+                        <p className="text-cyan-400 font-bold tracking-widest text-xs uppercase">Plan & Build Edition</p>
+                        {/* KEY DISPLAY - READ ONLY IF SET */}
+                        <div className={`mt-4 px-3 py-1 rounded-full border text-xs font-bold flex gap-2 ${key ? 'border-cyan-500 text-cyan-400 bg-cyan-900/20' : 'border-red-500 text-red-400 cursor-pointer'}`} onClick={() => !key && setShowKey(true)}>
+                           <Icon d={PATHS.Key} size={14}/> {key ? "System Bereit" : "Key fehlt (Klick)"}
+                        </div>
                     </div>
 
                     <div className="w-full max-w-6xl px-4 pb-20 grid grid-cols-1 md:grid-cols-3 gap-6 mx-auto animate-fade-in-up" style={{animationDelay: '0.1s'}}>
@@ -350,11 +371,13 @@
                                 <div className="grid grid-cols-2 gap-2">
                                     <button onClick={()=>run('explain')} className="bg-white/10 hover:bg-white/20 py-2 rounded-lg text-xs font-bold">Erklären</button>
                                     <button onClick={()=>run('homework_solve', 'Löse:')} className="bg-white/10 hover:bg-white/20 py-2 rounded-lg text-xs font-bold">Lösen</button>
+                                    <button onClick={()=>run('homework', 'Hilfe:')} className="bg-white/10 hover:bg-white/20 py-2 rounded-lg text-xs font-bold">Hilfe</button>
+                                    <button onClick={()=>run('correction', 'Korrigiere:')} className="bg-white/10 hover:bg-white/20 py-2 rounded-lg text-xs font-bold">Korr.</button>
                                 </div>
                             </div>
                         </div>
 
-                        {/* 2. LERNPLAN (NEU) */}
+                        {/* 2. LERNPLAN */}
                         <div className="glass p-6 rounded-3xl flex flex-col gap-4 border border-emerald-500/30 shadow-lg shadow-emerald-900/20">
                             <div className="flex items-center gap-3 text-emerald-400"><Icon d={PATHS.Calendar} size={28} /> <h3 className="text-xl font-bold text-white">Lernplan</h3></div>
                             <div className="space-y-2 mt-auto">
@@ -364,7 +387,7 @@
                             </div>
                         </div>
 
-                        {/* 3. PRÄSENTATION (BUILDER) */}
+                        {/* 3. PRÄSENTATION */}
                         <div className="glass p-6 rounded-3xl flex flex-col gap-4 border border-orange-500/30 shadow-lg shadow-orange-900/20">
                             <div className="flex items-center gap-3 text-orange-400"><Icon d={PATHS.Presentation} size={28} /> <h3 className="text-xl font-bold text-white">Referat</h3></div>
                             <div className="space-y-2 mt-auto">
@@ -387,22 +410,41 @@
                             </div>
                         </div>
                     )}
+                    
+                    <div className="w-full text-center pb-8 mt-auto z-10"><button onClick={() => setShowLegal(true)} className="text-[10px] text-slate-500 hover:text-white transition-colors">Rechtliches</button></div>
+                        {showLegal && (
+                          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl max-h-[85vh] rounded-2xl flex flex-col shadow-2xl relative">
+                              <div className="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 rounded-t-2xl z-10"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon d={PATHS.FileText} className="text-indigo-400"/> Rechtliche Hinweise</h2><button onClick={() => setShowLegal(false)} className="text-slate-400 hover:text-white"><Icon d={PATHS.X} /></button></div>
+                              <div className="p-6 overflow-y-auto space-y-8 text-sm text-slate-300">
+                                <section><h3 className="font-bold text-white mb-2">Impressum</h3><p>Kayden Schunack<br/>Kontakt: didskanal@gmail.com</p></section>
+                                <section><h3 className="font-bold text-white mb-2">Datenschutz</h3><p>Keine dauerhafte Speicherung personenbezogener Daten.</p></section>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {showCookieBanner && (
+                          <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 p-4 z-50 flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl">
+                            <div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-full text-blue-400"><Icon d={PATHS.Cookie} size={20} /></div><p className="text-xs text-slate-300">Wir verwenden Cookies.</p></div>
+                            <button onClick={() => setShowCookieBanner(false)} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg font-bold">Akzeptieren</button>
+                          </div>
+                        )}
                 </div>
             );
 
             // --- CLASSROOM VIEW ---
             return (
-                <div className="h-dvh flex bg-slate-950 text-slate-100 overflow-hidden relative">
+                <div className="h-dvh flex flex-col md:flex-row bg-slate-950 overflow-hidden relative text-slate-200">
                     
                     {/* BUILDER LOADING OVERLAY */}
-                    {loading && mode === 'presentation' && (
-                        <div className="absolute inset-0 z-50 bg-[#0f172a]/90 backdrop-blur-xl flex flex-col items-center justify-center">
+                    {loading && (mode === 'presentation' || mode === 'plan') && (
+                        <div className="absolute inset-0 z-50 bg-[#0f172a]/95 backdrop-blur-xl flex flex-col items-center justify-center">
                             <div className="relative">
-                                <Icon d={PATHS.Presentation} size={64} className="text-orange-500 mb-4 animate-bounce" />
+                                <Icon d={mode==='plan'?PATHS.Calendar:PATHS.Presentation} size={64} className="text-orange-500 mb-4 animate-bounce" />
                                 <div className="absolute -right-8 -bottom-4 animate-type text-cyan-400"><Icon d={PATHS.Mouse} size={32}/></div>
                             </div>
-                            <h2 className="text-3xl font-black text-white mb-2">Erstelle Präsentation...</h2>
-                            <p className="text-cyan-400 font-mono text-sm animate-pulse">{loadText}</p>
+                            <h2 className="text-3xl font-black text-white mb-2">{mode==='plan'?'Plane Lernen...':'Erstelle Präsentation...'}</h2>
+                            <p className="text-cyan-400 font-mono text-sm animate-pulse">{loadText || "Initialisiere..."}</p>
                             <div className="w-64 h-1 bg-slate-800 rounded-full mt-6 overflow-hidden">
                                 <div className="h-full bg-orange-500 animate-scan w-full relative"></div>
                             </div>
@@ -422,12 +464,12 @@
                                 {mode === 'plan' && plan.length > 0 ? (
                                     <div className="w-full h-full overflow-y-auto pr-2 space-y-4">
                                         {plan.map((day, i) => (
-                                            <div key={i} className="bg-slate-800 p-4 rounded-xl border-l-4 border-emerald-500 shadow-lg">
+                                            <div key={i} className="bg-slate-800 p-4 rounded-xl border-l-4 border-emerald-500 shadow-lg animate-fade-in" style={{animationDelay: `${i*0.1}s`}}>
                                                 <div className="flex justify-between mb-2">
-                                                    <span className="font-bold text-emerald-400">{day.day}</span>
+                                                    <span className="font-bold text-emerald-400 text-lg">{day.day}</span>
                                                     <span className="text-xs bg-black/30 px-2 py-1 rounded text-slate-400">{day.type || 'Lernen'}</span>
                                                 </div>
-                                                <p className="text-sm">{day.task}</p>
+                                                <p className="text-sm text-slate-300">{day.task}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -447,7 +489,7 @@
                                         </div>
                                     </div>
                                 ) : (
-                                    currentImg ? <div className="relative w-full h-full flex items-center justify-center"><img src={currentImg} className="max-h-full max-w-full rounded-xl shadow-2xl" /><button onClick={handleReloadImage} className="absolute bottom-4 right-4 bg-slate-700 p-2 rounded-full text-white"><Icon d={PATHS.Refresh} /></button></div>
+                                    currentImg ? <div className="relative w-full h-full flex items-center justify-center"><img src={currentImg} className="max-h-full max-w-full rounded-xl shadow-2xl object-contain border border-white/10" />{(mode==='explain'||mode==='homework')&&<button onClick={handleDownloadImage} className="absolute bottom-4 right-4 bg-blue-600 p-2 rounded-full shadow-lg"><Icon d={PATHS.Download} size={16}/></button>}</div>
                                     : loading ? <div className="animate-pulse text-cyan-500">Lade Inhalte...</div> : <Icon d={PATHS.ImageIcon} size={64} className="text-slate-800"/>
                                 )}
                             </div>
