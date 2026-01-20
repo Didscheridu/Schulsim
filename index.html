@@ -3,36 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SchulSim AI 7.0 (Reborn)</title>
+    <title>SchulSim AI 7.0 (Ultimate)</title>
     
-    <!-- Externe Bibliotheken (Stabil) -->
+    <!-- Frameworks -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <!-- html2canvas für den Bild-Download des Plans -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
     <style>
-        body { background-color: #020617; color: #f1f5f9; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        body { background-color: #0f172a; color: #f1f5f9; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
         
+        /* Aurora Background Animation */
+        @keyframes aurora {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .bg-aurora {
+            background: linear-gradient(-45deg, #020617, #1e1b4b, #0f172a, #312e81);
+            background-size: 400% 400%;
+            animation: aurora 15s ease infinite;
+        }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+        .glass:hover {
+            border-color: rgba(56, 189, 248, 0.4);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
         /* Animationen */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-enter { animation: fadeIn 0.5s ease-out forwards; }
-        
-        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); } 50% { box-shadow: 0 0 25px rgba(56, 189, 248, 0.5); } }
-        .glow { animation: pulse-glow 3s infinite; }
-
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        
-        /* Glass Look */
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
     </style>
 </head>
 <body>
@@ -42,13 +59,13 @@
         // ==========================================
         // 🔐 STEALTH KEY KONFIGURATION
         // ==========================================
-        const KEY_PART_1 = "AIzaSyCb4nqoilymX4lPn9EOUsZq-"; // Erster Teil des Keys
-        const KEY_PART_2 = "oKnIISDWAg"; // Zweiter Teil (RÜCKWÄRTS geschrieben!)
+        const KEY_PART_1 = ""; 
+        const KEY_PART_2 = ""; 
         // ==========================================
 
         const { useState, useEffect, useRef } = React;
 
-        // --- ICONS (SVG Direkt im Code für maximale Stabilität) ---
+        // --- ICONS ---
         const Icon = ({ path, size = 24, className = "" }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 <path d={path} />
@@ -65,7 +82,14 @@
             Check: "M20 6L9 17l-5-5",
             Key: "M21 2l-2 2m-7.6 7.6l4.4 4.4L22 7l-3-3l-4.4 4.4M2 17l6-6M2 17v4h4",
             Refresh: "M23 4v6h-6M1 20v-6h6",
-            Image: "M18 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3zM6 8l4 4 4-4 4 4M14 14l-4 4-4-4"
+            Image: "M18 3H6a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h12a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3zM6 8l4 4 4-4 4 4M14 14l-4 4-4-4",
+            Settings: "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6",
+            GraduationCap: "M22 10v6M2 10l10-5 10 5-10 5z M6 12v5c3 3 9 3 12 0v-5",
+            PenTool: "m12 19 7-7 3 3-7 7-3-3z M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z",
+            ChevronRight: "M9 18l6-6-6-6",
+            ChevronLeft: "M15 18l-6-6 6-6",
+            Upload: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M17 8l-5-5-5 5 M12 3v12",
+            Camera: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"
         };
 
         // --- CORE LOGIK ---
@@ -76,7 +100,7 @@
         };
 
         const generateAI = async (prompt, systemPrompt, key) => {
-            if (!key) throw new Error("Kein API Key vorhanden.");
+            if (!key) throw new Error("Kein API Key.");
             try {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`, {
                     method: "POST", headers: { "Content-Type": "application/json" },
@@ -96,7 +120,8 @@
                 const data = await res.json();
                 if (data.query?.pages) return Object.values(data.query.pages)[0].imageinfo[0].url;
             } catch (e) {}
-            return `https://image.pollinations.ai/prompt/${encodeURIComponent(clean)}?width=800&height=600&nologo=true`;
+            // KEIN AI Fallback mehr, nur echtes Internet. Wenn nichts, dann null.
+            return null;
         };
 
         // --- COMPONENTS ---
@@ -106,51 +131,46 @@
             const [showKeyInput, setShowKeyInput] = useState(false);
             const [tempKey, setTempKey] = useState("");
 
-            const saveKey = () => {
-                localStorage.setItem("gemini_key", tempKey);
-                setKey(tempKey);
-                setShowKeyInput(false);
-            };
-
             return (
-                <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-900 via-[#020617] to-indigo-950">
-                    <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 mb-2 drop-shadow-lg">SchulSim AI</h1>
-                    <p className="text-slate-400 font-bold tracking-widest text-xs uppercase mb-12">System Version 7.0 • Reborn</p>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
-                        <button onClick={() => onNavigate('learn')} className="glass-panel p-8 rounded-2xl hover:bg-slate-800 transition-all group border-t-4 border-blue-500">
-                            <div className="bg-blue-500/20 p-4 rounded-full w-fit mb-4 group-hover:scale-110 transition-transform"><Icon path={ICONS.Brain} className="text-blue-400" size={32}/></div>
-                            <h3 className="text-2xl font-bold mb-2">Verstehen</h3>
-                            <p className="text-slate-400 text-sm">Erklärungen & Fragen</p>
-                        </button>
+                <div className="flex-1 flex flex-col items-center justify-center p-6 bg-aurora relative">
+                    <div className="z-10 text-center mb-10 animate-enter">
+                         <div className="inline-block p-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl shadow-2xl mb-6 transform hover:scale-105 transition-transform"><Icon path={ICONS.GraduationCap} size={64} className="text-white"/></div>
+                        <h1 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-blue-400 mb-2 drop-shadow-2xl">SchulSim AI</h1>
+                        <p className="text-blue-200 font-bold tracking-[0.5em] text-xs uppercase mb-8">Ultimate Builder Edition</p>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
+                            <button onClick={() => onNavigate('learn')} className="glass p-8 rounded-3xl hover:bg-white/10 transition-all group text-left border-t border-white/10">
+                                <div className="mb-4 text-cyan-400 group-hover:scale-110 transition-transform origin-left"><Icon path={ICONS.Brain} size={32}/></div>
+                                <h3 className="text-2xl font-bold mb-1">Verstehen</h3>
+                                <p className="text-slate-400 text-sm">Erklärungen & Fragen</p>
+                            </button>
 
-                        <button onClick={() => onNavigate('plan')} className="glass-panel p-8 rounded-2xl hover:bg-slate-800 transition-all group border-t-4 border-emerald-500">
-                            <div className="bg-emerald-500/20 p-4 rounded-full w-fit mb-4 group-hover:scale-110 transition-transform"><Icon path={ICONS.Calendar} className="text-emerald-400" size={32}/></div>
-                            <h3 className="text-2xl font-bold mb-2">Lernplan</h3>
-                            <p className="text-slate-400 text-sm">Ziele erreichen</p>
-                        </button>
+                            <button onClick={() => onNavigate('plan')} className="glass p-8 rounded-3xl hover:bg-white/10 transition-all group text-left border-t border-white/10">
+                                <div className="mb-4 text-emerald-400 group-hover:scale-110 transition-transform origin-left"><Icon path={ICONS.Calendar} size={32}/></div>
+                                <h3 className="text-2xl font-bold mb-1">Lernplan</h3>
+                                <p className="text-slate-400 text-sm">Wochenplaner Builder</p>
+                            </button>
 
-                        <button onClick={() => onNavigate('pres')} className="glass-panel p-8 rounded-2xl hover:bg-slate-800 transition-all group border-t-4 border-orange-500">
-                            <div className="bg-orange-500/20 p-4 rounded-full w-fit mb-4 group-hover:scale-110 transition-transform"><Icon path={ICONS.Presentation} className="text-orange-400" size={32}/></div>
-                            <h3 className="text-2xl font-bold mb-2">Referat</h3>
-                            <p className="text-slate-400 text-sm">Folien & Skript</p>
-                        </button>
-                    </div>
-
-                    <div className="mt-12">
-                        <button onClick={() => setShowKeyInput(true)} className={`text-xs px-4 py-2 rounded-full border flex items-center gap-2 ${hasKey ? 'border-green-500 text-green-400' : 'border-red-500 text-red-400 animate-pulse'}`}>
+                            <button onClick={() => onNavigate('pres')} className="glass p-8 rounded-3xl hover:bg-white/10 transition-all group text-left border-t border-white/10">
+                                <div className="mb-4 text-orange-400 group-hover:scale-110 transition-transform origin-left"><Icon path={ICONS.Presentation} size={32}/></div>
+                                <h3 className="text-2xl font-bold mb-1">Referat</h3>
+                                <p className="text-slate-400 text-sm">Folien & Skript</p>
+                            </button>
+                        </div>
+                        
+                        <button onClick={() => setShowKeyInput(true)} className={`mt-12 px-5 py-2 rounded-full border text-xs font-bold flex items-center gap-2 mx-auto ${hasKey ? 'border-green-500 text-green-400 bg-green-500/10' : 'border-red-500 text-red-400 bg-red-500/10 animate-pulse'}`}>
                             <Icon path={ICONS.Key} size={14}/> {hasKey ? "System Bereit" : "API Key fehlt"}
                         </button>
                     </div>
 
                     {showKeyInput && (
-                        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
-                            <div className="bg-slate-900 p-6 rounded-2xl w-full max-w-md border border-slate-700 shadow-2xl">
+                        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+                            <div className="bg-slate-900 border border-slate-700 p-8 rounded-3xl w-full max-w-md shadow-2xl">
                                 <h3 className="text-xl font-bold mb-4 text-white">Setup</h3>
-                                <input type="password" placeholder="API Key hier..." className="w-full bg-black/50 border border-slate-600 rounded p-3 text-white mb-4" onChange={e => setTempKey(e.target.value)} />
+                                <input type="password" placeholder="API Key..." className="w-full bg-black/50 border border-slate-600 rounded-xl px-4 py-3 text-white mb-4 outline-none focus:border-cyan-500" onChange={e => setTempKey(e.target.value)} />
                                 <div className="flex gap-2">
-                                    <button onClick={saveKey} className="flex-1 bg-blue-600 py-2 rounded font-bold text-white">Speichern</button>
-                                    <button onClick={() => setShowKeyInput(false)} className="px-4 py-2 text-slate-400">Abbrechen</button>
+                                    <button onClick={() => { localStorage.setItem("gemini_key", tempKey); setKey(tempKey); setShowKeyInput(false); }} className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white py-3 rounded-xl font-bold">Speichern</button>
+                                    <button onClick={() => setShowKeyInput(false)} className="px-6 py-3 text-slate-400 hover:text-white">Abbrechen</button>
                                 </div>
                             </div>
                         </div>
@@ -164,19 +184,35 @@
             const [chat, setChat] = useState([]);
             const [input, setInput] = useState("");
             const [loading, setLoading] = useState(false);
+            const [file, setFile] = useState(null);
+            
+            const chatEnd = useRef(null);
+            useEffect(() => chatEnd.current?.scrollIntoView({ behavior: 'smooth' }), [chat, loading]);
 
-            const send = async () => {
-                if (!input.trim() || !apiKey) return;
-                const userMsg = { role: 'user', text: input };
+            const handleFile = (e) => {
+                const f = e.target.files[0];
+                if(f) { const r = new FileReader(); r.onload=ev=>setFile(ev.target.result); r.readAsDataURL(f); }
+            };
+
+            const send = async (mode = 'explain', overrideText = null) => {
+                const txt = overrideText || input;
+                if ((!txt.trim() && !file) || !apiKey) return;
+                
+                const userMsg = { role: 'user', text: txt, img: file };
                 setChat(prev => [...prev, userMsg]);
                 setInput("");
+                setFile(null);
                 setLoading(true);
 
+                let sys = "Du bist ein Tutor. Antworte kurz, präzise und hilfreich. Nutze Fettgedrucktes.";
+                if (mode === 'homework') sys = "Löse die Aufgabe schrittweise. Zeige den Rechenweg.";
+                if (mode === 'correction') sys = "Korrigiere den Text/das Bild. Zeige Fehler auf.";
+
                 try {
-                    const text = await generateAI(userMsg.text, "Du bist ein Tutor. Antworte kurz, präzise und hilfreich. Nutze Fettgedrucktes für Wichtiges.", apiKey);
-                    // Check if topic needs image
+                    const text = await generateAI(userMsg.text, sys, apiKey);
+                    // Check if topic needs image (only if simple text query)
                     let img = null;
-                    if (userMsg.text.length < 50) img = await searchImage(userMsg.text); // Nur bei kurzen "Themen" suchen
+                    if (userMsg.text.length < 50 && !userMsg.img) img = await searchImage(userMsg.text); 
                     setChat(prev => [...prev, { role: 'model', text, img }]);
                 } catch (e) {
                     setChat(prev => [...prev, { role: 'model', text: "Fehler: " + e.message }]);
@@ -187,30 +223,52 @@
             return (
                 <div className="h-full flex flex-col bg-slate-950">
                     <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#0b0f19]">
-                        <h2 className="font-bold text-blue-400 flex gap-2"><Icon path={ICONS.Brain}/> Lernen</h2>
-                        <button onClick={onBack}><Icon path={ICONS.Back}/></button>
+                        <h2 className="font-bold text-cyan-400 flex gap-2"><Icon path={ICONS.Brain}/> Lernen & Aufgaben</h2>
+                        <button onClick={onBack} className="text-slate-400 hover:text-white"><Icon path={ICONS.Back}/></button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {chat.length === 0 && <div className="text-center text-slate-600 mt-20">Stelle eine Frage oder gib ein Thema ein...</div>}
+                    
+                    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                        {chat.length === 0 && (
+                            <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-4">
+                                <div className="p-6 rounded-full bg-white/5"><Icon path={ICONS.Brain} size={48}/></div>
+                                <p>Stelle eine Frage oder lade eine Aufgabe hoch.</p>
+                            </div>
+                        )}
                         {chat.map((m, i) => (
                             <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                                <div className={`max-w-[85%] p-4 rounded-xl text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-200'}`}>
+                                {m.img && <img src={m.img} className="mb-2 max-w-xs rounded-xl border border-white/10" />}
+                                <div className={`max-w-[85%] p-4 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed ${m.role === 'user' ? 'bg-cyan-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 rounded-tl-none border border-white/5'}`}>
                                     {m.text}
                                 </div>
-                                {m.img && <img src={m.img} className="mt-2 w-48 rounded-lg shadow-lg" />}
                             </div>
                         ))}
-                        {loading && <div className="text-slate-500 text-xs animate-pulse">KI schreibt...</div>}
+                        {loading && <div className="flex gap-2 text-slate-500 text-xs items-center ml-4"><div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce"></div> KI schreibt...</div>}
+                        <div ref={chatEnd}></div>
                     </div>
-                    <div className="p-4 bg-[#0b0f19] border-t border-white/10 flex gap-2">
-                        <input className="flex-1 bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500" placeholder="Nachricht..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} />
-                        <button onClick={send} className="p-2 bg-blue-600 rounded-lg text-white"><Icon path={ICONS.Send}/></button>
+                    
+                    <div className="p-4 bg-[#0b0f19] border-t border-white/10 space-y-2">
+                        {file && <div className="flex items-center gap-2 text-xs text-green-400 bg-green-900/20 px-3 py-1 rounded-lg w-fit"><Icon path={ICONS.Check} size={12}/> Bild angehängt <button onClick={()=>setFile(null)} className="text-white hover:text-red-400 ml-2">×</button></div>}
+                        <div className="flex gap-2">
+                             <label className="p-3 bg-slate-800 rounded-xl hover:bg-slate-700 cursor-pointer text-slate-400 hover:text-white transition-colors">
+                                <Icon path={ICONS.Upload} />
+                                <input type="file" className="hidden" onChange={handleFile} accept="image/*" />
+                            </label>
+                            <div className="flex-1 flex bg-slate-900 border border-slate-700 rounded-xl overflow-hidden focus-within:border-cyan-500 transition-colors">
+                                <input className="flex-1 bg-transparent px-4 py-2 text-white outline-none" placeholder="Nachricht..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} />
+                                <button onClick={()=>send()} className="px-4 text-cyan-500 hover:text-white"><Icon path={ICONS.Send}/></button>
+                            </div>
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                            <button onClick={()=>send('homework', 'Löse diese Aufgabe:')} className="whitespace-nowrap px-3 py-1.5 bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold hover:bg-emerald-900/50">Lösen</button>
+                            <button onClick={()=>send('correction', 'Korrigiere:')} className="whitespace-nowrap px-3 py-1.5 bg-yellow-900/30 text-yellow-400 border border-yellow-500/30 rounded-lg text-xs font-bold hover:bg-yellow-900/50">Korrigieren</button>
+                            <button onClick={()=>send('explain', 'Hilf mir bei:')} className="whitespace-nowrap px-3 py-1.5 bg-blue-900/30 text-blue-400 border border-blue-500/30 rounded-lg text-xs font-bold hover:bg-blue-900/50">Hilfe</button>
+                        </div>
                     </div>
                 </div>
             );
         };
 
-        // 3. PLAN MODULE
+        // 3. PLAN MODULE (VISUAL CALENDAR)
         const PlanModule = ({ apiKey, onBack }) => {
             const [goal, setGoal] = useState("");
             const [date, setDate] = useState("");
@@ -221,20 +279,23 @@
                 if(!goal || !date || !apiKey) return;
                 setLoading(true);
                 try {
-                    const prompt = `Erstelle einen Lernplan. Ziel: ${goal}. Bis: ${date}. Format JSON: [{"day":"Montag", "task":"..."}, ...]`;
-                    const res = await generateAI(prompt, "Du bist ein Planer. Antworte NUR mit JSON Array.", apiKey);
+                    const prompt = `Erstelle einen detaillierten Lernplan. Ziel: "${goal}". Bis: "${date}". 
+                    WICHTIG: Antworte NUR mit einem JSON Array. Format: [{"day":"Montag 12.10.","task":"Kapitel 1 lesen","type":"Theorie","duration":"45min"}, ...].`;
+                    const res = await generateAI(prompt, "Du bist ein Planer. Antworte NUR mit JSON.", apiKey);
                     const json = res.replace(/```json|```/g, '').trim();
                     setPlan(JSON.parse(json));
-                } catch(e) { alert("Fehler beim Planen."); }
+                } catch(e) { alert("Fehler beim Planen: " + e.message); }
                 setLoading(false);
             };
 
-            const downloadPlan = () => {
-                if(!plan) return;
-                const text = `LERNPLAN: ${goal}\nZiel-Datum: ${date}\n\n` + plan.map(p => `${p.day}: ${p.task}`).join('\n');
-                const blob = new Blob([text], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = 'Lernplan.txt'; a.click();
+            const downloadImage = () => {
+                const element = document.getElementById('plan-container');
+                html2canvas(element).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = 'Lernplan.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                });
             };
 
             return (
@@ -245,52 +306,84 @@
                     </div>
                     
                     {!plan ? (
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4">
-                            <h3 className="text-2xl font-bold text-white">Neuen Plan erstellen</h3>
-                            <input className="w-full max-w-md bg-slate-900 border border-slate-700 p-3 rounded text-white" placeholder="Was willst du lernen? (z.B. Alle Länder Europas)" value={goal} onChange={e=>setGoal(e.target.value)} />
-                            <input className="w-full max-w-md bg-slate-900 border border-slate-700 p-3 rounded text-white" placeholder="Bis wann? (z.B. nächsten Freitag)" value={date} onChange={e=>setDate(e.target.value)} />
-                            <button onClick={createPlan} disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-50">
-                                {loading ? "Erstelle Plan..." : "Plan Generieren"}
-                            </button>
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-6 animate-enter">
+                            <div className="text-center mb-4">
+                                <h3 className="text-3xl font-bold text-white mb-2">Dein Weg zum Ziel</h3>
+                                <p className="text-slate-400">Gib dein Ziel ein, die KI plant den Rest.</p>
+                            </div>
+                            <div className="w-full max-w-md space-y-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500 uppercase font-bold ml-1">Lernziel</label>
+                                    <input className="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-emerald-500 transition-colors" placeholder="z.B. Alle Länder Europas" value={goal} onChange={e=>setGoal(e.target.value)} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-slate-500 uppercase font-bold ml-1">Zieldatum</label>
+                                    <input className="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-emerald-500 transition-colors" placeholder="z.B. nächsten Freitag" value={date} onChange={e=>setDate(e.target.value)} />
+                                </div>
+                                <button onClick={createPlan} disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-emerald-900/20 transition-all disabled:opacity-50 flex justify-center items-center gap-2">
+                                    {loading ? <Icon path={ICONS.Refresh} className="animate-spin"/> : <Icon path={ICONS.Sparkles}/>} 
+                                    {loading ? "Plane..." : "Plan erstellen"}
+                                </button>
+                            </div>
                         </div>
                     ) : (
-                        <div className="flex-1 flex flex-col p-8 overflow-hidden">
-                            <div className="flex justify-between items-end mb-6">
-                                <div>
-                                    <h2 className="text-3xl font-bold text-white">{goal}</h2>
-                                    <p className="text-emerald-400">Deadline: {date}</p>
-                                </div>
-                                <button onClick={downloadPlan} className="flex gap-2 items-center bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-sm text-white"><Icon path={ICONS.Download} size={16}/> Speichern (.txt)</button>
+                        <div className="flex-1 flex flex-col overflow-hidden bg-[#0f172a]">
+                            <div className="p-4 flex justify-end bg-[#1e293b] border-b border-white/10">
+                                <button onClick={downloadImage} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"><Icon path={ICONS.Download} size={16}/> Als Bild speichern</button>
                             </div>
-                            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-                                {plan.map((item, i) => (
-                                    <div key={i} className="bg-slate-800/50 border-l-4 border-emerald-500 p-4 rounded-r-lg animate-enter" style={{animationDelay: i*0.1+'s'}}>
-                                        <div className="font-bold text-slate-300 mb-1">{item.day}</div>
-                                        <div className="text-lg text-white">{item.task}</div>
+                            <div className="flex-1 overflow-y-auto p-8" id="plan-container">
+                                <div className="max-w-4xl mx-auto">
+                                    <div className="text-center mb-10">
+                                        <h2 className="text-4xl font-black text-white mb-2">{goal}</h2>
+                                        <p className="text-emerald-400 font-bold uppercase tracking-widest">Deadline: {date}</p>
                                     </div>
-                                ))}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {plan.map((item, i) => (
+                                            <div key={i} className="bg-slate-800 p-6 rounded-2xl border border-white/5 shadow-xl hover:translate-y-[-5px] transition-transform">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <span className="font-bold text-emerald-400 bg-emerald-900/30 px-3 py-1 rounded-full text-sm">{item.day}</span>
+                                                    <span className="text-xs text-slate-500">{item.duration}</span>
+                                                </div>
+                                                <h4 className="text-white font-bold text-lg mb-2">{item.type}</h4>
+                                                <p className="text-slate-300 text-sm leading-relaxed">{item.task}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
-                            <button onClick={()=>setPlan(null)} className="mt-4 text-center text-slate-500 text-sm hover:text-white">Neuen Plan erstellen</button>
+                            <button onClick={()=>setPlan(null)} className="p-4 text-center text-slate-500 hover:text-white text-sm bg-slate-900 border-t border-white/5">Neuen Plan erstellen</button>
                         </div>
                     )}
                 </div>
             );
         };
 
-        // 4. PRES MODULE
+        // 4. PRES MODULE (BUILDER STYLE)
         const PresModule = ({ apiKey, onBack }) => {
             const [topic, setTopic] = useState("");
             const [slides, setSlides] = useState([]);
             const [loading, setLoading] = useState(false);
             const [status, setStatus] = useState("");
             const [idx, setIdx] = useState(0);
+            
+            // Settings
+            const [audience, setAudience] = useState("Klasse 8");
+            const [style, setStyle] = useState("Modern");
 
             const create = async () => {
                 if(!topic) return;
-                setLoading(true); setStatus("Erstelle Struktur...");
+                setLoading(true); 
+                
                 try {
-                    const sys = `Erstelle JSON für Präsentation (5 Folien). Format: [{"title":"...","content":["..."],"imageQuery":"...","flashcard":"..."}]. Layouts: image_right. Nur JSON.`;
-                    const res = await generateAI(`Thema: ${topic}`, sys, apiKey);
+                    setStatus("Analysiere Thema...");
+                    await new Promise(r => setTimeout(r, 800)); // Effekt
+                    
+                    setStatus("Strukturiere Inhalte...");
+                    const sys = `Erstelle JSON für Präsentation (5 Folien). Thema: ${topic}. Zielgruppe: ${audience}. Stil: ${style}.
+                    Format: [{"title":"...","content":["..."],"imageQuery":"Suchbegriff (Deutsch)","flashcard":"Sprechertext"}]. 
+                    Layouts: image_right. Nur JSON.`;
+                    
+                    const res = await generateAI(`Erstelle Präsentation`, sys, apiKey);
                     const json = res.replace(/```json|```/g, '').trim();
                     const parsed = JSON.parse(json);
                     
@@ -320,51 +413,81 @@
             };
 
             return (
-                <div className="h-full flex flex-col bg-slate-950">
+                <div className="h-full flex flex-col bg-slate-950 relative overflow-hidden">
+                    {/* BUILDER OVERLAY */}
+                    {loading && (
+                        <div className="absolute inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-center">
+                             <div className="relative mb-8">
+                                <Icon path={ICONS.Presentation} size={80} className="text-orange-500 animate-pulse" />
+                                <div className="absolute top-0 left-0 w-full h-full bg-orange-500/20 blur-3xl rounded-full animate-pulse"></div>
+                            </div>
+                            <h2 className="text-4xl font-black text-white mb-2 tracking-tight">Erstelle Präsentation</h2>
+                            <p className="text-orange-400 font-mono text-sm uppercase tracking-widest animate-pulse">{status}</p>
+                            
+                            {/* Fake Terminal Output */}
+                            <div className="mt-8 bg-black/50 p-4 rounded-lg font-mono text-xs text-green-400 w-64 h-24 overflow-hidden border border-white/10 opacity-70">
+                                <div>> init_builder.exe</div>
+                                <div>> analyzing_topic("{topic}")</div>
+                                <div>> fetching_assets...</div>
+                                <div className="animate-pulse">> processing...</div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#0b0f19]">
                         <h2 className="font-bold text-orange-400 flex gap-2"><Icon path={ICONS.Presentation}/> Studio</h2>
                         <button onClick={onBack}><Icon path={ICONS.Back}/></button>
                     </div>
 
                     {slides.length === 0 ? (
-                         <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4">
-                            {loading ? (
-                                <div className="text-center animate-pulse">
-                                    <div className="text-orange-500 text-4xl mb-4 font-black">BAUE...</div>
-                                    <p className="text-slate-400 font-mono">{status}</p>
+                         <div className="flex-1 flex flex-col items-center justify-center p-8 gap-6 animate-enter">
+                             <h3 className="text-3xl font-bold text-white">Referat erstellen</h3>
+                             <div className="w-full max-w-md space-y-4">
+                                <input className="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-orange-500" placeholder="Thema..." value={topic} onChange={e=>setTopic(e.target.value)} />
+                                <div className="flex gap-2">
+                                    <select className="flex-1 bg-slate-900 border border-slate-700 p-3 rounded-xl text-slate-300 text-sm outline-none" onChange={e=>setAudience(e.target.value)}>
+                                        <option>Klasse 5-7</option><option>Klasse 8-10</option><option>Oberstufe</option>
+                                    </select>
+                                    <select className="flex-1 bg-slate-900 border border-slate-700 p-3 rounded-xl text-slate-300 text-sm outline-none" onChange={e=>setStyle(e.target.value)}>
+                                        <option>Modern</option><option>Seriös</option><option>Kreativ</option>
+                                    </select>
                                 </div>
-                            ) : (
-                                <>
-                                    <h3 className="text-2xl font-bold text-white">Worüber soll ich referieren?</h3>
-                                    <input className="w-full max-w-md bg-slate-900 border border-slate-700 p-3 rounded text-white" placeholder="Thema..." value={topic} onChange={e=>setTopic(e.target.value)} />
-                                    <button onClick={create} className="bg-orange-600 hover:bg-orange-500 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all">Erstellen</button>
-                                </>
-                            )}
+                                <button onClick={create} className="w-full bg-orange-600 hover:bg-orange-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-orange-900/20 transition-all flex justify-center items-center gap-2">
+                                    <Icon path={ICONS.Play} size={18}/> Präsentation Generieren
+                                </button>
+                             </div>
                         </div>
                     ) : (
                         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                             {/* Slide Preview */}
-                            <div className="flex-1 p-8 bg-slate-900 flex flex-col items-center justify-center">
-                                <div className="aspect-video bg-white text-black w-full max-w-3xl rounded-xl shadow-2xl p-8 flex flex-col relative overflow-hidden">
-                                    <h2 className="text-3xl font-bold mb-4 border-b-2 border-orange-500 pb-2">{slides[idx].title}</h2>
-                                    <div className="flex-1 flex gap-4">
-                                        <div className="flex-1 text-lg">
-                                            <ul>{slides[idx].content.map((t,i)=><li key={i} className="mb-2">• {t}</li>)}</ul>
+                            <div className="flex-1 p-4 md:p-8 bg-slate-900 flex flex-col items-center justify-center relative">
+                                <div className="aspect-video bg-white text-black w-full max-w-4xl rounded-xl shadow-2xl p-6 md:p-12 flex flex-col relative overflow-hidden transition-all duration-500">
+                                    <h2 className="text-3xl md:text-4xl font-bold mb-6 border-b-4 border-orange-500 pb-4">{slides[idx].title}</h2>
+                                    <div className="flex-1 flex gap-8 items-center">
+                                        <div className="flex-1 text-lg md:text-xl leading-relaxed">
+                                            <ul>{slides[idx].content.map((t,i)=><li key={i} className="mb-4 flex gap-3"><span className="text-orange-500 font-bold">•</span>{t}</li>)}</ul>
                                         </div>
-                                        {slides[idx].imageUrl && <img src={slides[idx].imageUrl} className="w-1/3 object-contain rounded" />}
+                                        {slides[idx].imageUrl && <div className="w-1/3 h-full bg-slate-100 rounded-lg overflow-hidden shadow-inner"><img src={slides[idx].imageUrl} className="w-full h-full object-cover" /></div>}
                                     </div>
-                                    <div className="absolute bottom-4 right-4 text-xs text-slate-400">{idx+1} / {slides.length}</div>
+                                    <div className="absolute bottom-6 right-8 text-sm text-slate-400 font-bold">Folie {idx+1} / {slides.length}</div>
                                 </div>
-                                <div className="flex gap-4 mt-6">
-                                    <button onClick={()=>setIdx(Math.max(0, idx-1))} className="p-3 bg-slate-800 rounded-full hover:bg-slate-700"><Icon path={ICONS.ChevronLeft}/></button>
-                                    <button onClick={()=>setIdx(Math.min(slides.length-1, idx+1))} className="p-3 bg-slate-800 rounded-full hover:bg-slate-700"><Icon path={ICONS.ChevronRight}/></button>
-                                    <button onClick={download} className="px-6 py-3 bg-orange-600 rounded-full font-bold hover:bg-orange-500 flex items-center gap-2 text-sm"><Icon path={ICONS.Download} size={16}/> PPTX Download</button>
+                                
+                                {/* Controls */}
+                                <div className="flex gap-4 mt-8 bg-slate-800 p-2 rounded-full border border-white/10 shadow-xl">
+                                    <button onClick={()=>setIdx(Math.max(0, idx-1))} className="p-3 bg-slate-700 rounded-full hover:bg-slate-600 text-white transition-colors"><Icon path={ICONS.ChevronLeft}/></button>
+                                    <span className="self-center px-4 font-bold text-slate-300">{idx+1} / {slides.length}</span>
+                                    <button onClick={()=>setIdx(Math.min(slides.length-1, idx+1))} className="p-3 bg-slate-700 rounded-full hover:bg-slate-600 text-white transition-colors"><Icon path={ICONS.ChevronRight}/></button>
+                                    <div className="w-px bg-white/10 mx-2"></div>
+                                    <button onClick={download} className="px-6 py-3 bg-orange-600 rounded-full font-bold hover:bg-orange-500 flex items-center gap-2 text-sm text-white transition-colors"><Icon path={ICONS.Download} size={16}/> Speichern</button>
                                 </div>
                             </div>
-                            {/* Notes */}
-                            <div className="w-full md:w-1/3 bg-[#0b0f19] border-l border-white/10 p-6 overflow-y-auto">
-                                <h4 className="text-xs uppercase font-bold text-slate-500 mb-4">Sprechertext</h4>
-                                <p className="text-slate-300 leading-relaxed text-lg">{slides[idx].flashcard}</p>
+                            
+                            {/* Notes Sidebar */}
+                            <div className="w-full md:w-80 bg-[#0b0f19] border-l border-white/10 p-6 overflow-y-auto hidden md:block">
+                                <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-xl">
+                                    <h4 className="text-xs uppercase font-bold text-yellow-500 mb-2 flex items-center gap-2"><Icon path={ICONS.Brain} size={14}/> Sprechertext</h4>
+                                    <p className="text-slate-300 leading-relaxed text-sm">{slides[idx].flashcard}</p>
+                                </div>
                             </div>
                         </div>
                     )}
