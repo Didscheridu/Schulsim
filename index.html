@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <title>SchulSim AI 6.0 (Clean Build)</title>
+    
+    <!-- Frameworks -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
+    <style>
+        @keyframes fade-in-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fade-in-up 0.6s ease-out forwards; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .h-dvh { height: 100dvh; }
+        .bg-glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 m-0 p-0 overscroll-none">
+    <div id="root" class="h-full"></div>
+
+    <script type="text/babel">
+        // ==========================================
+        // KONFIGURATION
+        // ==========================================
+        // Dies ist die EINZIGE Stelle für den Key.
+        const CONFIG_API_KEY = "__GEMINI_API_KEY__"; 
+
+        const { useState, useEffect, useRef } = React;
+
+        // --- STABILE ICONS ---
+        const Icon = ({ d, size = 24, className = "", ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+                <path d={d} />
+            </svg>
+        );
+
+        const PATHS = {
+            GraduationCap: "M22 10v6M2 10l10-5 10 5-10 5z M6 12v5c3 3 9 3 12 0v-5",
+            Brain: "M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z",
+            Play: "M5 3l14 9-14 9V3z",
+            Send: "m22 2-7 20-4-9-9-4Z M22 2 11 13",
+            Refresh: "M21 2v6h-6 M3 12a9 9 0 0 1 15-6.7L21 8 M3 22v-6h6 M21 12a9 9 0 0 1-15 6.7L3 16",
+            ImageIcon: "M3 3h18v18H3z M3 15l5-5 8 8 M14 11l2-2 5 5 M9 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2z",
+            Languages: "m5 8 6 6 M4 14l6-6 2-3 M2 5h12 M7 2h1 M22 22l-5-10-5 10 M14 18h6",
+            PenTool: "m12 19 7-7 3 3-7 7-3-3z M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z",
+            Presentation: "M2 3h20 M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3 M7 21l5-5 5 5",
+            Check: "M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4L12 14.01 9 11.01",
+            X: "M18 6L6 18M6 6l12 12",
+            ChevronLeft: "M15 18l-6-6 6-6",
+            ChevronRight: "M9 18l6-6-6-6",
+            Download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3",
+            Upload: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M17 8l-5-5-5 5 M12 3v12",
+            Mic: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z M19 10v2a7 7 0 0 1-14 0v-2 M12 19v3",
+            Sparkles: "m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z M5 3v4 M9 3v4 M3 7h4",
+            Pencil: "M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z M15 5l4 4",
+            FileText: "M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z M14 2L14 8 20 8 M16 13H8 M16 17H8 M10 9H8",
+            Lock: "M7 11V7a5 5 0 0 1 10 0v4 M3 11h18v11H3z",
+            Globe: "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20 M2 12h20",
+            Scale: "m16 16 3-8 3 8c-.87.65-1.926 1-3 1s-2.13-.35-3-1Z m-14 0 3-8 3 8c-.87.65-1.926 1-3 1s-2.13-.35-3-1Z M7 21h10 M12 3v18 M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2",
+            Shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10",
+            FileCheck: "M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z M14 2L14 8 20 8 M9 15l2 2 4-4",
+            UserCheck: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M16 11l2 2 4-4",
+            Cookie: "M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5 M8.5 8.5v.01 M16 15.5v.01 M12 12v.01 M11 17v.01 M7 14v.01",
+            AlertTriangle: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01",
+            Key: "M21 2l-2 2m-7.6 7.6l4.4 4.4L22 7l-3-3l-4.4 4.4M2 17l6-6M2 17v4h4"
+        };
+
+        const DESIGNS = {
+            modern: { name: 'Modern (Blau)', bg: 'bg-white', text: 'text-slate-800', border: 'border-slate-200' },
+            business: { name: 'Business (Grau)', bg: 'bg-slate-100', text: 'text-slate-900', border: 'border-slate-300' },
+            chalkboard: { name: 'Tafel (Grün)', bg: 'bg-emerald-900', text: 'text-white', border: 'border-yellow-700/50' },
+            cyber: { name: 'Cyber (Neon)', bg: 'bg-slate-950', text: 'text-cyan-400', border: 'border-cyan-500/50' },
+            book: { name: 'Buch (Antik)', bg: 'bg-amber-50', text: 'text-stone-800', border: 'border-stone-300' },
+            geometric: { name: 'Geo', bg: 'bg-indigo-50', text: 'text-indigo-900', border: 'border-indigo-200' },
+            space: { name: 'Space', bg: 'bg-[#0B0D17]', text: 'text-slate-200', border: 'border-indigo-900' },
+        };
+
+        const Typewriter = ({ text }) => {
+            const [display, setDisplay] = useState('');
+            useEffect(() => {
+                setDisplay(''); if (!text) return;
+                let i = 0;
+                const timer = setInterval(() => {
+                    if (i < text.length) { setDisplay(prev => prev + text.charAt(i)); i++; }
+                    else clearInterval(timer);
+                }, 4);
+                return () => clearInterval(timer);
+            }, [text]);
+            return <span className="whitespace-pre-wrap">{display.split('**').map((s,i) => i%2===1 ? <strong key={i} className="text-indigo-400 font-bold">{s}</strong> : s)}</span>;
+        };
+
+        // --- API HELPERS ---
+        const urlToBase64 = async (url) => {
+            try {
+                const res = await fetch(url); const blob = await res.blob();
+                return new Promise(r => { const reader = new FileReader(); reader.onloadend = () => r(reader.result.split(',')[1]); reader.readAsDataURL(blob); });
+            } catch (e) { return null; }
+        };
+
+        const verifyImageQuality = async (imgUrl, topic, key) => {
+            if (!key || key.includes("__GEMINI")) return true;
+            const base64 = await urlToBase64(imgUrl);
+            if (!base64) return true;
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`, {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [
+                        { text: `Prüfe das Bild für den Schulunterricht Thema "${topic}". Ist es lehrreich und sicher? Antworte NUR JA oder NEIN.` },
+                        { inlineData: { mimeType: "image/jpeg", data: base64 } }
+                    ] }] })
+                });
+                const data = await res.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text?.toUpperCase().includes("JA");
+            } catch (e) { return true; }
+        };
+
+        const searchInternetImage = async (query, onStatus, key) => {
+            const cleanQuery = query.replace(/bild von|foto von/gi, '').trim();
+            const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=${encodeURIComponent(cleanQuery)}&gsrlimit=5&prop=imageinfo&iiprop=url&format=json&origin=*`;
+            try {
+                if(onStatus) onStatus("Suche geeignete Bilder...");
+                const res = await fetch(url); const data = await res.json();
+                if (data.query?.pages) {
+                    const pages = Object.values(data.query.pages);
+                    for (let i = 0; i < Math.min(pages.length, 3); i++) {
+                        const candidate = pages[i].imageinfo[0].url;
+                        if (!candidate.endsWith('.svg')) {
+                            if (onStatus) onStatus(`Prüfe Bild ${i+1}...`);
+                            if (await verifyImageQuality(candidate, query, key)) return candidate;
+                        }
+                    }
+                    return pages[0].imageinfo[0].url;
+                }
+            } catch (e) {}
+            return `https://image.pollinations.ai/prompt/${encodeURIComponent(query)}?width=800&height=600&nologo=true`;
+        };
+
+        const generateContent = async (history, prompt, imageData, mode, key, settings) => {
+            if (!key || key === "CONFIG_API_KEY" || key === "__GEMINI_API_KEY__" || key === "") return "FEHLER: Bitte trage zuerst deinen API Key ein!";
+            
+            const parts = [{ text: prompt }];
+            if (imageData) parts.push({ inlineData: { mimeType: "image/png", data: imageData } });
+
+            let systemPrompt = "";
+            if (mode === 'presentation') {
+                systemPrompt = `Erstelle eine JSON-Struktur für eine Schulpräsentation.
+                Thema: ${settings?.topic}. Zielgruppe: ${settings?.audience}. Detailgrad: ${settings?.detail}.
+                Format: [{"title": "...", "content": ["Punkt 1", "Punkt 2"], "layout": "image_right", "imagePrompt": "Suchbegriff", "flashcard": "Sprechertext"}]. 
+                Layouts: image_right, image_left, title_only. 
+                WICHTIG: KEIN Markdown. Nur valides JSON.`;
+            } else if (mode === 'homework_solve') {
+                systemPrompt = "Du bist ein 1er-Schüler. Löse die Aufgabe direkt, korrekt und mit Lösungsweg. Keine langen Erklärungen, nur die Lösung zum Abschreiben.";
+            } else if (mode === 'correction') {
+                 systemPrompt = "Du bist Lehrer. Korrigiere den Text/das Bild. Zeige Fehler auf und gib die richtige Version an.";
+            } else {
+                systemPrompt = `Du bist 'Herr Lehrer'. Modus: ${mode}. Erkläre fachlich korrekt aber einfach. Nutze Absätze, Listen, **Fett**. KEINE LaTeX Formeln.`;
+            }
+
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${key}`, {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: systemPrompt }] }, ...history, { role: "user", parts }] })
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    return `API Fehler (${res.status}): ${err.error?.message || "Überprüfe Key"}`;
+                }
+                const data = await res.json();
+                let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!text) return "Keine Antwort.";
+                text = text.replace(/\$\$/g, '').replace(/\\\[/g, '').replace(/\\\]/g, ''); 
+                if (mode === 'presentation') { 
+                    text = text.replace(/```json|```/g, '').trim(); 
+                    const m = text.match(/\[.*\]/s); 
+                    if (m) text = m[0]; 
+                }
+                return text;
+            } catch (e) { return `Verbindungsfehler: ${e.message}`; }
+        };
+
+        // --- APP ---
+        const App = () => {
+            const [localKey, setLocalKey] = useState(() => {
+                if (CONFIG_API_KEY && !CONFIG_API_KEY.includes("__GEMINI")) return CONFIG_API_KEY;
+                return localStorage.getItem('gemini_key') || "";
+            });
+            const [view, setView] = useState("intro");
+            const [mode, setMode] = useState("explain");
+            const [topic, setTopic] = useState("");
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState("");
+            const [loading, setLoading] = useState(false);
+            const [currentImg, setCurrentImg] = useState(null);
+            const [slides, setSlides] = useState([]);
+            const [slideIdx, setSlideIdx] = useState(0);
+            const [imgStatus, setImgStatus] = useState(null);
+            const [fileData, setFileData] = useState(null);
+            
+            const [showLegal, setShowLegal] = useState(false);
+            const [showCookieBanner, setShowCookieBanner] = useState(true);
+            const [showKeyInput, setShowKeyInput] = useState(false);
+            
+            const [presSettings, setPresSettings] = useState({ count: 5, design: 'modern', audience: 'Klasse 5-10', detail: 'Mittel' });
+
+            const chatEndRef = useRef(null);
+
+            useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
+
+            const handleSaveKey = (k) => {
+                setLocalKey(k); localStorage.setItem('gemini_key', k); setShowKeyInput(false);
+            };
+
+            const reset = () => { setView("intro"); setTopic(""); setMessages([]); setSlides([]); setCurrentImg(null); setFileData(null); };
+
+            const handleFile = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => setFileData(ev.target.result);
+                reader.readAsDataURL(file);
+                e.target.value = "";
+            };
+
+            const handleReloadImage = () => {
+                 setImgStatus("Suche Alternative...");
+                 const query = mode === 'presentation' ? slides[slideIdx].imagePrompt || topic : topic;
+                 const seed = Math.floor(Math.random() * 99999);
+                 const newImg = `https://image.pollinations.ai/prompt/${encodeURIComponent(query)}?width=800&height=600&nologo=true&seed=${seed}`;
+                 if (mode === 'presentation' && slides.length > 0) {
+                    const newSlides = [...slides]; newSlides[slideIdx].imageUrl = newImg; setSlides(newSlides);
+                 } else { setCurrentImg(newImg); }
+                 setImgStatus(null);
+            };
+
+            const handleStart = async (m, sub = null) => {
+                if (!topic && !fileData && sub !== 'question') { alert("Bitte Thema oder Bild wählen."); return; }
+                if (!localKey) { setShowKeyInput(true); return; }
+                
+                setView("classroom"); setLoading(true); setMessages([]);
+                let modeName = sub || m;
+                let prompt = `Thema: ${topic}`;
+                
+                if (sub === 'question') prompt = `Frage: ${topic}`;
+                else if (fileData) { prompt += " (Siehe Bild)"; setCurrentImg(fileData); }
+
+                try {
+                    if (modeName === 'presentation') {
+                        const json = await generateContent([], `Thema: ${topic}. Design: ${presSettings.design}. Folien: ${presSettings.count}.`, null, 'presentation', localKey, { ...presSettings, topic });
+                        
+                        if (json.startsWith("API Fehler") || json.startsWith("Verbindungsfehler") || json.startsWith("FEHLER")) {
+                             setMessages([{ role: "model", parts: [{ text: json }] }]);
+                             setLoading(false);
+                             return;
+                        }
+
+                        const parsed = JSON.parse(json); setSlides(parsed);
+                        for (let i = 0; i < parsed.length; i++) {
+                            if (parsed[i].imagePrompt) {
+                                setImgStatus(`Folie ${i+1}: Suche Bild...`);
+                                parsed[i].imageUrl = await searchInternetImage(parsed[i].imagePrompt, null, localKey);
+                            }
+                        }
+                        setSlides([...parsed]); setImgStatus(null);
+                    } else {
+                        if (!currentImg && !fileData && sub !== 'question') {
+                             setImgStatus("Suche Bild...");
+                             searchInternetImage(topic, setImgStatus, localKey).then(img => { setCurrentImg(img); setImgStatus(null); });
+                        }
+                        const res = await generateContent([], prompt, fileData?.split(',')[1], modeName, localKey);
+                        setMessages([{ role: "model", parts: [{ text: res }] }]);
+                    }
+                } catch(e) { setMessages([{ role: 'model', parts: [{ text: "Fehler: " + e.message }] }]); }
+                setLoading(false);
+            };
+
+            const handleSend = async () => { if (!input.trim()) return; const newMsg = [...messages, {role:'user', parts:[{text:input}]}]; setMessages(newMsg); setInput(''); setLoading(true); const r = await generateContent(newMsg, input, null, mode, localKey); setMessages(p => [...p, {role:'model', parts:[{text:r}]}]); setLoading(false); };
+            const handleDownloadImage = () => { if (!currentImg) return; const link = document.createElement('a'); link.href = currentImg; link.download = `SchulSim.png`; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
+            
+            const downloadPPTX = async () => {
+                const PptxGenJS = await loadPptxLib(); const pres = new PptxGenJS(); pres.layout = 'LAYOUT_16x9';
+                const colors = { modern: {bg:'FFFFFF', fg:'1e293b'}, chalkboard: {bg:'064E3B', fg:'FFFFFF'}, cyber: {bg:'020617', fg:'22d3ee'} };
+                const c = colors[presSettings?.design] || colors.modern;
+
+                slides.forEach(slide => {
+                    const s = pres.addSlide(); s.background = { color: c.bg };
+                    s.addText(slide.title, { x:0.5, y:0.4, w:'90%', h:0.8, fontSize:28, bold:true, color:c.fg, align: slide.layout==='title_only'?'center':'left' });
+                    if (slide.layout !== 'title_only') {
+                         if (slide.content) s.addText(slide.content.map(t=>({text:t})), { x:0.5, y:1.4, w:4.5, h:4, fontSize:18, color:c.fg, bullet:true });
+                         if (slide.imageUrl) s.addImage({ path:slide.imageUrl, x:5.5, y:1.4, w:4.3, h:3.5 });
+                    }
+                    if(slide.flashcard) s.addNotes(slide.flashcard);
+                });
+                pres.writeFile({ fileName: `Praesentation.pptx` });
+            };
+
+            const DESIGNS_CONFIG = {
+                modern: { name: 'Modern (Blau)', bg: 'bg-white', text: 'text-slate-800', border: 'border-slate-200' },
+                business: { name: 'Business (Grau)', bg: 'bg-slate-100', text: 'text-slate-900', border: 'border-slate-300' },
+                chalkboard: { name: 'Tafel (Grün)', bg: 'bg-emerald-900', text: 'text-white', border: 'border-yellow-700/50' },
+                cyber: { name: 'Cyber (Neon)', bg: 'bg-slate-950', text: 'text-cyan-400', border: 'border-cyan-500/50' },
+                book: { name: 'Buch (Antik)', bg: 'bg-amber-50', text: 'text-stone-800', border: 'border-stone-300' },
+                geometric: { name: 'Geo', bg: 'bg-indigo-50', text: 'text-indigo-900', border: 'border-indigo-200' },
+                space: { name: 'Space', bg: 'bg-[#0B0D17]', text: 'text-slate-200', border: 'border-indigo-900' },
+            };
+            const dObj = DESIGNS_CONFIG[presSettings.design] || DESIGNS_CONFIG.modern;
+
+            if (view === "intro") {
+                return (
+                    <div className="h-dvh bg-slate-950 text-white flex flex-col font-sans overflow-y-auto">
+                        <div className="fixed inset-0 bg-gradient-to-br from-indigo-900 via-slate-950 to-purple-950 opacity-80 -z-10"></div>
+                        <div className="z-10 flex flex-col items-center pt-10 pb-6 px-4 animate-fade-in-up">
+                            <div className="inline-block p-5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-3xl shadow-2xl mb-4 hover:scale-105 transition-transform"><Icon d={PATHS.GraduationCap} size={56} className="text-white" /></div>
+                            <h1 className="text-4xl md:text-6xl font-black mb-2">SchulSim AI 6.0</h1>
+                            <p className="text-indigo-300 font-bold tracking-[0.4em] text-xs uppercase mt-2">GitHub Edition • Created by Kayden</p>
+                            <button onClick={()=>setShowKeyInput(true)} className={`mt-4 px-3 py-1 rounded-full border text-xs font-bold flex items-center gap-2 ${localKey ? 'border-green-500 text-green-400 bg-green-500/10' : 'border-red-500 text-red-400 bg-red-500/10'}`}>
+                                <div className={`w-2 h-2 rounded-full ${localKey ? 'bg-green-500' : 'bg-red-500'}`}></div> {localKey ? "System Bereit" : "Key fehlt (Setup)"}
+                            </button>
+                        </div>
+
+                        <div className="z-10 w-full max-w-7xl px-4 pb-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mx-auto animate-fade-in-up">
+                            {[{ id: 'explain', icon: 'Brain', title: 'Verstehen', act: () => handleStart('explain') },
+                              { id: 'vocab', icon: 'Languages', title: 'Vokabeln', hasFile: true, act: () => handleStart('vocabulary') },
+                              { id: 'homework', icon: 'PenTool', title: 'Aufgaben', hasFile: true, act: (sub) => handleStart(sub), subs: [['homework_help','Hilfe'],['correction','Korr.'],['homework_solve','Lösen']] },
+                              { id: 'pres', icon: 'Presentation', title: 'Präsentation', special: true }
+                            ].map((card) => (
+                                <div key={card.id} className="bg-white/5 border border-white/10 p-6 rounded-3xl hover:bg-white/10 transition-all flex flex-col shadow-2xl">
+                                    <div className="flex items-center gap-3 mb-4 text-indigo-400"><Icon d={PATHS[card.icon]} size={28} /> <h3 className="font-bold text-xl text-white">{card.title}</h3></div>
+                                    
+                                    {card.special ? (
+                                        <div className="space-y-3 mt-auto">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, audience:e.target.value})}><option>Klasse 5-7</option><option>Klasse 8-10</option><option>Oberstufe</option></select>
+                                                <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, detail:e.target.value})}><option>Kurz</option><option>Mittel</option><option>Detail</option></select>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, design:e.target.value})}>{Object.keys(DESIGNS_CONFIG).map(k=><option key={k} value={k}>{DESIGNS_CONFIG[k].name}</option>)}</select>
+                                                <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, count:e.target.value})}>{[3,5,7,10].map(n=><option key={n} value={n}>{n} Folien</option>)}</select>
+                                            </div>
+                                            <input className="w-full bg-black/40 rounded-xl px-4 py-3 text-sm text-white outline-none border border-white/10 focus:border-orange-500" placeholder="Thema..." value={topic} onChange={e=>setTopic(e.target.value)} />
+                                            <button onClick={()=>handleStart('presentation')} disabled={!topic} className="w-full bg-orange-600 hover:bg-orange-500 py-3 rounded-xl font-bold text-sm text-white shadow-lg flex items-center justify-center gap-2"><Icon d={PATHS.Play} size={14}/> Erstellen</button>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-auto space-y-3">
+                                            {card.hasFile && (
+                                                <div className="relative">
+                                                    {fileData ? (
+                                                        <div className="flex items-center gap-2 text-xs text-green-300 bg-green-900/30 p-3 rounded-xl border border-green-500/30"><Icon d={PATHS.Check} size={16} /> Bild bereit <button onClick={() => setFileData(null)} className="ml-auto hover:text-white"><Icon d={PATHS.X} size={14}/></button></div>
+                                                    ) : (<label className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-slate-500 rounded-xl text-slate-300 text-xs cursor-pointer hover:border-white hover:text-white bg-black/20"><Icon d={PATHS.Upload} size={16} /> Bild laden<input type="file" accept="image/*" className="hidden" onChange={handleFile} /></label>)}
+                                                </div>
+                                            )}
+                                            {card.subs ? (
+                                                <div className="flex gap-1 w-full bg-black/20 p-1 rounded-lg">
+                                                    {card.subs.map(([k, l]) => <button key={k} onClick={() => handleStart(k)} className="flex-1 py-1.5 rounded text-[9px] font-bold hover:bg-white/10 text-slate-300 hover:text-white uppercase">{l}</button>)}
+                                                </div>
+                                            ) : (
+                                                card.id === 'explain' && <div className="flex gap-1 w-full bg-black/20 p-1 rounded-lg"><button onClick={()=>handleStart('explain')} className="flex-1 py-1.5 rounded text-[9px] font-bold hover:bg-white/10 text-slate-300 hover:text-white">ERKLÄREN</button><button onClick={()=>handleStart('explain', 'question')} className="flex-1 py-1.5 rounded text-[9px] font-bold hover:bg-white/10 text-slate-300 hover:text-white">FRAGE</button></div>
+                                            )}
+                                            <input className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder={card.id==='homework'?"Aufgabe...": card.id==='explain'?"Thema/Frage...": "Thema..."} value={topic} onChange={e=>setTopic(e.target.value)} />
+                                            {!card.subs && card.id !== 'explain' && <button onClick={()=>handleStart(card.act ? 'vocabulary' : 'explain')} className="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold text-sm text-white shadow-lg transition-transform active:scale-95">Starten</button>}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {showKeyInput && (
+                            <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+                                <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl">
+                                    <h2 className="text-xl font-bold text-white mb-4">API Key Setup</h2>
+                                    <input type="password" placeholder="AIzaSy..." className="w-full bg-black/50 border border-slate-600 rounded-lg px-4 py-3 text-white mb-4 focus:border-indigo-500 outline-none" onKeyDown={(e) => { if(e.key === 'Enter') handleSaveKey(e.target.value) }} />
+                                    <div className="flex gap-2"><button onClick={(e) => handleSaveKey(e.target.previousSibling.value)} className="flex-1 bg-indigo-600 py-2 rounded-lg font-bold">Speichern</button><button onClick={() => setShowKeyInput(false)} className="w-full mt-4 text-xs text-slate-500">Abbrechen</button></div>
+                                </div>
+                            </div>
+                        )}
+                        <div className="w-full text-center pb-8 mt-auto z-10"><button onClick={() => setShowLegal(true)} className="text-[10px] text-slate-500 hover:text-white transition-colors">Rechtliches</button></div>
+                        {showLegal && (
+                          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl max-h-[85vh] rounded-2xl flex flex-col shadow-2xl relative">
+                              <div className="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 rounded-t-2xl z-10"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon d={PATHS.FileText} className="text-indigo-400"/> Rechtliche Hinweise</h2><button onClick={() => setShowLegal(false)} className="text-slate-400 hover:text-white"><Icon d={PATHS.X} /></button></div>
+                              <div className="p-6 overflow-y-auto space-y-8 text-sm text-slate-300">
+                                <section><h3 className="font-bold text-white mb-2">Impressum</h3><p>Kayden Schunack<br/>Kontakt: didskanal@gmail.com</p></section>
+                                <section><h3 className="font-bold text-white mb-2">Datenschutz</h3><p>Keine dauerhafte Speicherung personenbezogener Daten.</p></section>
+                                <section><h3 className="font-bold text-white mb-2">Bildquellen</h3><p>Bilder werden über die Wikimedia Commons API bezogen oder sind gemeinfrei.</p></section>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {showCookieBanner && (
+                          <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 p-4 z-50 flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl">
+                            <div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-full text-blue-400"><Icon d={PATHS.Cookie} size={20} /></div><p className="text-xs text-slate-300">Wir verwenden Cookies.</p></div>
+                            <button onClick={() => setShowCookieBanner(false)} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg font-bold">Akzeptieren</button>
+                          </div>
+                        )}
+                    </div>
+                );
+            }
+
+            return (
+                <div className="h-dvh flex flex-col md:flex-row bg-slate-950 overflow-hidden text-slate-100">
+                    <div className="h-[40%] md:h-full md:w-1/2 border-r border-white/5 flex flex-col bg-[#0F1115]">
+                        <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#0F1115]">
+                            <span className="font-bold text-indigo-400 flex items-center gap-2"><Icon d={PATHS.ImageIcon} size={18}/> Tafel</span>
+                            <button onClick={reset} className="text-xs text-red-400 font-bold border border-red-900/30 px-3 py-1 rounded-lg hover:bg-red-900/20">BEENDEN</button>
+                        </div>
+                        <div className="flex-1 p-6 flex flex-col items-center justify-center bg-black/20 overflow-hidden relative">
+                            {loading && <div className="absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-center"><Icon d={PATHS.Refresh} className="animate-spin text-orange-500 mb-2" size={48}/><p className="animate-pulse">{imgStatus || "Denke nach..."}</p></div>}
+                            
+                            {mode === 'presentation' && slides.length > 0 ? (
+                                <div className={`w-full aspect-video ${dObj.bg} ${dObj.text} rounded-xl shadow-2xl p-6 flex flex-col overflow-hidden border-4 border-white/5`}>
+                                    <h2 className="text-2xl font-bold border-b pb-4 mb-4 truncate">{slides[slideIdx].title}</h2>
+                                    <div className="flex flex-1 gap-4 overflow-hidden">
+                                        <div className="flex-1 overflow-y-auto"><ul className="space-y-2">{slides[slideIdx].content.map((c,i)=><li key={i} className="text-sm flex gap-2"><span className="text-blue-500">•</span>{c}</li>)}</ul></div>
+                                        {slides[slideIdx].imageUrl && <div className="w-1/3 h-full relative"><img src={slides[slideIdx].imageUrl} className="w-full h-full object-contain rounded-lg shadow-sm bg-black/5" /><button onClick={handleReloadImage} className="absolute bottom-2 right-2 bg-black/60 p-1.5 rounded-full hover:bg-black/80 text-white shadow-lg" title="Neues Bild"><Icon d={PATHS.Refresh} size={14}/></button></div>}
+                                    </div>
+                                    <div className="mt-4 flex justify-between items-center">
+                                        <div className="flex gap-2">
+                                            <button onClick={()=>setSlideIdx(s=>Math.max(0,s-1))} disabled={slideIdx===0} className="p-2 bg-black/10 rounded-full disabled:opacity-30"><Icon d={PATHS.ChevronLeft}/></button>
+                                            <span className="text-xs">{slideIdx+1}/{slides.length}</span>
+                                            <button onClick={()=>setSlideIdx(s=>Math.min(slides.length-1,s+1))} disabled={slideIdx===slides.length-1} className="p-2 bg-black/10 rounded-full disabled:opacity-30"><Icon d={PATHS.ChevronRight}/></button>
+                                        </div>
+                                        <button onClick={downloadPPTX} className="text-xs flex items-center gap-1 bg-orange-600 text-white px-3 py-1 rounded shadow hover:bg-orange-500"><Icon d={PATHS.Download} size={12}/> PPTX</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                currentImg ? <div className="relative w-full h-full flex items-center justify-center"><img src={currentImg} className="max-h-full max-w-full rounded-xl shadow-2xl object-contain border border-white/10" />{(mode === 'explain' || mode === 'vocabulary') && <button onClick={handleDownloadImage} className="absolute bottom-4 right-4 bg-blue-600 p-2 rounded-full shadow-lg"><Icon d={PATHS.Download} size={16} className="text-white"/></button>}</div>
+                                : <div className="text-slate-800 animate-pulse"><Icon d={PATHS.ImageIcon} size={128}/></div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="h-[60%] md:h-full md:w-1/2 flex flex-col bg-slate-950 relative">
+                        <div className="p-4 border-b border-white/5 flex items-center gap-3 bg-slate-900/50 shrink-0">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div><span className="font-bold text-sm">Herr Lehrer (KI)</span>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4 pb-28">
+                            {slides.length > 0 ? (
+                                <div className="bg-amber-50 text-slate-800 p-6 rounded-lg shadow-xl font-serif border-l-4 border-yellow-400"><h4 className="text-xs uppercase opacity-50 mb-2 font-sans font-bold">Folie {slideIdx+1}:</h4><p className="text-lg leading-relaxed">{slides[slideIdx].flashcard}</p></div>
+                            ) : (
+                                messages.map((m, i) => <div key={i} className={`flex ${m.role === 'model' ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-lg ${m.role === 'model' ? 'bg-slate-800 border border-white/5 rounded-tl-none' : 'bg-indigo-600 rounded-tr-none'}`}><Typewriter text={m.parts[0].text} /></div></div>)
+                            )}
+                            <div ref={chatEndRef}></div>
+                        </div>
+                        {!slides.length && <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950 to-transparent"><div className="flex items-center bg-slate-900 border border-white/10 rounded-full px-4 py-1 shadow-2xl focus-within:border-indigo-500 transition-all"><input className="flex-1 bg-transparent py-3 outline-none text-sm" placeholder="Nachricht..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter' && handleSend()} /><button onClick={handleSend} className="bg-indigo-600 p-2 rounded-full ml-2"><Icon d={PATHS.Send} size={18} /></button></div></div>}
+                    </div>
+                </div>
+            );
+        };
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
