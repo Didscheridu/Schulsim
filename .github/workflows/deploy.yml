@@ -27,33 +27,54 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Inject API Key (Safe Method)
+      - name: Inject API Key (Robust)
         env:
-          # Wir laden den Key in die Umgebung
           MY_SECRET_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
+          # 1. Prüfen, ob das Secret existiert
           if [ -z "$MY_SECRET_KEY" ]; then
-            echo "ACHTUNG: Secret GEMINI_API_KEY wurde nicht gefunden!"
-          else
-            # Wir nutzen Python, um den Text sicher zu ersetzen (keine Probleme mit Sonderzeichen)
-            python3 -c "
-import os
-key = os.environ.get('MY_SECRET_KEY', '')
-try:
-    with open('index.html', 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    # Ersetze den Platzhalter sicher
-    new_content = content.replace('__GEMINI_API_KEY__', key)
-    
-    with open('index.html', 'w', encoding='utf-8') as f:
-        f.write(new_content)
-    print('Key wurde erfolgreich eingefügt.')
-except Exception as e:
-    print(f'Fehler beim Einfügen des Keys: {e}')
-    exit(1)
-"
+            echo "::error::Das Secret GEMINI_API_KEY ist leer oder nicht gefunden! Bitte in den GitHub Settings prüfen."
+            exit 1
           fi
+
+          # 2. Prüfen, ob die index.html existiert
+          if [ ! -f index.html ]; then
+            echo "::error::index.html nicht gefunden! Bist du im richtigen Ordner?"
+            exit 1
+          fi
+
+          # 3. Python-Script temporär erstellen (vermeidet Syntax-Fehler in YAML)
+          cat <<EOF > replace_key.py
+          import os
+
+          # Key sicher aus der Umgebung holen
+          key = os.environ.get('MY_SECRET_KEY', '')
+
+          try:
+              with open('index.html', 'r', encoding='utf-8') as f:
+                  content = f.read()
+              
+              if '__GEMINI_API_KEY__' not in content:
+                  print("ACHTUNG: Platzhalter '__GEMINI_API_KEY__' wurde in index.html NICHT gefunden.")
+                  # Wir brechen hier nicht ab, falls der Key schon drin steht, aber es ist eine Warnung wert.
+              else:
+                  # Ersetzen
+                  new_content = content.replace('__GEMINI_API_KEY__', key)
+                  
+                  with open('index.html', 'w', encoding='utf-8') as f:
+                      f.write(new_content)
+                  print("ERFOLG: Der Platzhalter wurde durch den API-Key ersetzt.")
+
+          except Exception as e:
+              print(f"Fehler beim Python-Skript: {e}")
+              exit(1)
+          EOF
+
+          # 4. Script ausführen
+          python3 replace_key.py
+
+          # 5. Aufräumen
+          rm replace_key.py
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
