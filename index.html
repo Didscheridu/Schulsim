@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SchulSim AI 8.0 (Smart Priority)</title>
+    <title>SchulSim AI 7.1 (Robust)</title>
     
     <!-- Frameworks -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -77,57 +77,46 @@
             return assembled;
         };
 
-        // INTELLIGENTE ANFRAGE MIT WARTEZEIT (RETRY LOGIC)
+        // ROBUSTE API FUNKTION MIT MODEL-FALLBACK
         const generateAI = async (prompt, systemPrompt, key, onStatus) => {
             if (!key) throw new Error("Kein API Key vorhanden.");
 
-            const models = ['gemini-2.5-flash-preview-09-2025', 'gemini-1.5-flash'];
-            const waitTime = 20000; // 20 Sekunden warten bei Fehler
+            // Liste der Modelle, die wir probieren (von neu nach alt)
+            const models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro'];
+            
+            let lastError = null;
 
-            const callApi = async (model) => {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
-                    method: "POST", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: systemPrompt }] }, { role: "user", parts: [{ text: prompt }] }] })
-                });
-                
-                if (res.status === 429) throw new Error("LIMIT");
-                const data = await res.json();
-                if (data.error) throw new Error(data.error.message);
-                return data.candidates[0].content.parts[0].text;
-            };
+            for (const model of models) {
+                try {
+                    if (onStatus) onStatus(`Frage KI (${model})...`);
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: systemPrompt }] }, { role: "user", parts: [{ text: prompt }] }] })
+                    });
 
-            // 1. Versuch: Bestes Modell (2.5)
-            try {
-                if (onStatus) onStatus("Denke nach (Modell: High-End)...");
-                return await callApi(models[0]);
-            } catch (e) {
-                if (e.message === "LIMIT") {
-                    // WARTEN statt abbrechen
-                    if (onStatus) onStatus("Hohe Auslastung. Warte 20s auf Premium-Slot...");
-                    await new Promise(r => setTimeout(r, waitTime));
-                    
-                    // 2. Versuch: Bestes Modell (2.5) nach Wartezeit
-                    try {
-                        if (onStatus) onStatus("Versuche es erneut (High-End)...");
-                        return await callApi(models[0]);
-                    } catch (e2) {
-                        if (e2.message === "LIMIT") {
-                             // Letzte Chance: Warten noch einmal
-                             if (onStatus) onStatus("Immer noch voll. Ein letzter Versuch...");
-                             await new Promise(r => setTimeout(r, waitTime));
-                             try {
-                                 return await callApi(models[0]);
-                             } catch(e3) {
-                                 // Fallback auf 1.5 wenn es gar nicht geht
-                                 if (onStatus) onStatus("Wechsle zu Standard-Modell (schneller)...");
-                                 return await callApi(models[1]);
-                             }
+                    if (!res.ok) {
+                        const errData = await res.json();
+                        // Wenn Limit oder Nicht gefunden, nächstes Modell probieren
+                        if (res.status === 429 || res.status === 404) {
+                            console.warn(`Modell ${model} fehlgeschlagen:`, errData);
+                            continue; 
                         }
-                        throw e2;
+                        throw new Error(errData.error?.message || `Fehler ${res.status}`);
                     }
+
+                    const data = await res.json();
+                    if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
+                        throw new Error("Leere Antwort von der KI");
+                    }
+                    return data.candidates[0].content.parts[0].text;
+
+                } catch (e) {
+                    lastError = e;
+                    console.warn(`Fehler bei ${model}:`, e);
                 }
-                throw e;
             }
+            
+            throw lastError || new Error("Alle KI-Modelle fehlgeschlagen.");
         };
 
         const searchImage = async (query) => {
@@ -143,6 +132,7 @@
 
         // --- COMPONENTS ---
 
+        // 1. HOME SCREEN
         const Home = ({ onNavigate, hasKey, setKey }) => {
             const [showKeyInput, setShowKeyInput] = useState(false);
             const [tempKey, setTempKey] = useState("");
@@ -156,7 +146,7 @@
             return (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-900 via-[#020617] to-indigo-950">
                     <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 mb-2 drop-shadow-lg">SchulSim AI</h1>
-                    <p className="text-slate-400 font-bold tracking-widest text-xs uppercase mb-12">Version 8.0 • High Performance Priority</p>
+                    <p className="text-slate-400 font-bold tracking-widest text-xs uppercase mb-12">Version 7.1 • Robust Edition</p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
                         <button onClick={() => onNavigate('learn')} className="glass-panel p-8 rounded-2xl hover:bg-slate-800 transition-all group border-t-4 border-blue-500 text-left">
@@ -188,7 +178,12 @@
                         <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
                             <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl w-full max-w-sm">
                                 <h3 className="text-white font-bold mb-4">API Key eingeben</h3>
-                                <input className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white mb-4 outline-none focus:border-blue-500" placeholder="AIzaSy..." value={val} onChange={e => setTempKey(e.target.value)} />
+                                <input 
+                                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white mb-4 outline-none focus:border-blue-500"
+                                    placeholder="AIzaSy..."
+                                    value={tempKey}
+                                    onChange={e => setTempKey(e.target.value)}
+                                />
                                 <div className="flex gap-2">
                                     <button onClick={saveKey} className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold">Speichern</button>
                                     <button onClick={() => setShowKeyInput(false)} className="px-4 py-2 text-slate-400">Abbrechen</button>
@@ -200,7 +195,59 @@
             );
         };
 
-        // ... LearnModule and PresModule definitions remain similar but use new generateAI ...
+        // 2. LEARN MODULE
+        const LearnModule = ({ apiKey, onBack }) => {
+            const [chat, setChat] = useState([]);
+            const [input, setInput] = useState("");
+            const [loading, setLoading] = useState(false);
+            const chatEndRef = useRef(null);
+
+            useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chat, loading]);
+
+            const send = async () => {
+                if (!input.trim() || !apiKey) return;
+                const userMsg = { role: 'user', text: input };
+                setChat(prev => [...prev, userMsg]);
+                setInput("");
+                setLoading(true);
+
+                try {
+                    const text = await generateAI(userMsg.text, "Du bist ein Tutor. Antworte kurz, präzise und hilfreich. Nutze Fettgedrucktes für Wichtiges.", apiKey);
+                    let img = null;
+                    if (userMsg.text.length < 50) img = await searchImage(userMsg.text); 
+                    setChat(prev => [...prev, { role: 'model', text, img }]);
+                } catch (e) {
+                    setChat(prev => [...prev, { role: 'model', text: "Fehler: " + e.message }]);
+                }
+                setLoading(false);
+            };
+
+            return (
+                <div className="h-full flex flex-col bg-slate-950">
+                    <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#0b0f19]">
+                        <h2 className="font-bold text-blue-400 flex gap-2"><Icon path={ICONS.Brain}/> Lernen</h2>
+                        <button onClick={onBack}><Icon path={ICONS.Back}/></button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {chat.length === 0 && <div className="text-center text-slate-600 mt-20">Stelle eine Frage oder gib ein Thema ein...</div>}
+                        {chat.map((m, i) => (
+                            <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                <div className={`max-w-[85%] p-4 rounded-xl text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-200'}`}>
+                                    {m.text}
+                                </div>
+                                {m.img && <img src={m.img} className="mt-2 w-48 rounded-lg shadow-lg" />}
+                            </div>
+                        ))}
+                        {loading && <div className="text-slate-500 text-xs animate-pulse">KI schreibt...</div>}
+                        <div ref={chatEndRef}></div>
+                    </div>
+                    <div className="p-4 bg-[#0b0f19] border-t border-white/10 flex gap-2">
+                        <input className="flex-1 bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-blue-500" placeholder="Nachricht..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} />
+                        <button onClick={send} className="p-2 bg-blue-600 rounded-lg text-white"><Icon path={ICONS.Send}/></button>
+                    </div>
+                </div>
+            );
+        };
 
         // 3. PLAN MODULE (VISUAL & DOWNLOAD)
         const PlanModule = ({ apiKey, onBack }) => {
@@ -284,15 +331,14 @@
                                     </div>
                                 </div>
                             </div>
+                            <button onClick={()=>setPlan(null)} className="mt-4 text-center text-slate-500 text-sm hover:text-white">Neuen Plan erstellen</button>
                         </div>
                     )}
                 </div>
             );
         };
 
-        // Note: PresModule and LearnModule are simplified here to fit the main changes but follow the same logic as before.
-        // Full integration below.
-
+        // 4. PRES MODULE
         const PresModule = ({ apiKey, onBack }) => {
             const [topic, setTopic] = useState("");
             const [slides, setSlides] = useState([]);
@@ -302,15 +348,20 @@
             
             const create = async () => {
                 if(!topic) return;
-                setLoading(true);
+                setLoading(true); 
                 try {
                     setStatus("Analysiere Thema...");
-                    // Artificial delay removed, waiting for API response takes time anyway
-                    const sys = `Erstelle JSON für Präsentation (5 Folien). Thema: ${topic}. Format: [{"title":"...","content":["..."],"imageQuery":"...","flashcard":"..."}]. Layouts: image_right. Nur JSON.`;
+                    await new Promise(r => setTimeout(r, 800)); // Effekt
+                    
+                    setStatus("Strukturiere Inhalte...");
+                    const sys = `Erstelle JSON für Präsentation (5 Folien). Thema: ${topic}.
+                    Format: [{"title":"...","content":["..."],"imageQuery":"Suchbegriff (Deutsch)","flashcard":"Sprechertext"}]. 
+                    Layouts: image_right. Nur JSON.`;
                     
                     const res = await generateAI(`Erstelle Präsentation`, sys, apiKey, setStatus);
                     const json = res.replace(/```json|```/g, '').trim();
                     const parsed = JSON.parse(json);
+                    
                     setSlides(parsed);
                     
                     for(let i=0; i<parsed.length; i++) {
@@ -337,40 +388,62 @@
             };
 
             return (
-                <div className="h-full flex flex-col bg-slate-950 relative">
+                <div className="h-full flex flex-col bg-slate-950 relative overflow-hidden">
                     {loading && (
                         <div className="absolute inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-center">
-                            <Icon path={ICONS.Presentation} size={80} className="text-orange-500 animate-pulse mb-6" />
-                            <h2 className="text-3xl font-black text-white mb-2">Erstelle Präsentation</h2>
-                            <p className="text-orange-400 font-mono text-sm animate-pulse">{status}</p>
+                            <div className="relative mb-8">
+                                <Icon path={ICONS.Presentation} size={80} className="text-orange-500 animate-pulse" />
+                            </div>
+                            <h2 className="text-4xl font-black text-white mb-2 tracking-tight">Erstelle Präsentation</h2>
+                            <p className="text-orange-400 font-mono text-sm uppercase tracking-widest animate-pulse">{status}</p>
                         </div>
                     )}
+
                     <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#0b0f19]">
                         <h2 className="font-bold text-orange-400 flex gap-2"><Icon path={ICONS.Presentation}/> Studio</h2>
                         <button onClick={onBack}><Icon path={ICONS.Back}/></button>
                     </div>
+
                     {slides.length === 0 ? (
                          <div className="flex-1 flex flex-col items-center justify-center p-8 gap-6 animate-enter">
                              <h3 className="text-3xl font-bold text-white">Referat erstellen</h3>
                              <div className="w-full max-w-md space-y-4">
                                 <input className="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white outline-none focus:border-orange-500" placeholder="Thema..." value={topic} onChange={e=>setTopic(e.target.value)} />
-                                <button onClick={create} className="w-full bg-orange-600 hover:bg-orange-500 text-white p-4 rounded-xl font-bold shadow-lg transition-all flex justify-center items-center gap-2">Generieren</button>
+                                <button onClick={create} className="w-full bg-orange-600 hover:bg-orange-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-orange-900/20 transition-all flex justify-center items-center gap-2">
+                                    <Icon path={ICONS.Play} size={18}/> Präsentation Generieren
+                                </button>
                              </div>
                         </div>
                     ) : (
                         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-                            <div className="flex-1 p-8 bg-slate-900 flex flex-col items-center justify-center">
-                                <div className="aspect-video bg-white text-black w-full max-w-3xl rounded-xl shadow-2xl p-8 flex flex-col relative">
-                                    <h2 className="text-3xl font-bold mb-4 border-b-2 border-orange-500 pb-2">{slides[idx].title}</h2>
-                                    <div className="flex-1 flex gap-4">
-                                        <div className="flex-1 text-lg"><ul>{slides[idx].content.map((t,i)=><li key={i} className="mb-2">• {t}</li>)}</ul></div>
-                                        {slides[idx].imageUrl && <img src={slides[idx].imageUrl} className="w-1/3 object-contain rounded" />}
+                            {/* Slide Preview */}
+                            <div className="flex-1 p-4 md:p-8 bg-slate-900 flex flex-col items-center justify-center relative">
+                                <div className="aspect-video bg-white text-black w-full max-w-4xl rounded-xl shadow-2xl p-6 md:p-12 flex flex-col relative overflow-hidden transition-all duration-500">
+                                    <h2 className="text-3xl md:text-4xl font-bold mb-6 border-b-4 border-orange-500 pb-4">{slides[idx].title}</h2>
+                                    <div className="flex-1 flex gap-8 items-center">
+                                        <div className="flex-1 text-lg md:text-xl leading-relaxed">
+                                            <ul>{slides[idx].content.map((t,i)=><li key={i} className="mb-4 flex gap-3"><span className="text-orange-500 font-bold">•</span>{t}</li>)}</ul>
+                                        </div>
+                                        {slides[idx].imageUrl && <div className="w-1/3 h-full bg-slate-100 rounded-lg overflow-hidden shadow-inner"><img src={slides[idx].imageUrl} className="w-full h-full object-cover" /></div>}
                                     </div>
+                                    <div className="absolute bottom-6 right-8 text-sm text-slate-400 font-bold">Folie {idx+1} / {slides.length}</div>
                                 </div>
-                                <div className="flex gap-4 mt-6">
-                                    <button onClick={()=>setIdx(Math.max(0, idx-1))} className="p-3 bg-slate-800 rounded-full hover:bg-slate-700"><Icon path={ICONS.Back} className="rotate-90"/></button>
-                                    <button onClick={()=>setIdx(Math.min(slides.length-1, idx+1))} className="p-3 bg-slate-800 rounded-full hover:bg-slate-700"><Icon path={ICONS.Send}/></button>
-                                    <button onClick={download} className="px-6 py-3 bg-orange-600 rounded-full font-bold">PPTX</button>
+                                
+                                {/* Controls */}
+                                <div className="flex gap-4 mt-8 bg-slate-800 p-2 rounded-full border border-white/10 shadow-xl">
+                                    <button onClick={()=>setIdx(Math.max(0, idx-1))} className="p-3 bg-slate-700 rounded-full hover:bg-slate-600 text-white transition-colors"><Icon path={ICONS.ChevronLeft}/></button>
+                                    <span className="self-center px-4 font-bold text-slate-300">{idx+1} / {slides.length}</span>
+                                    <button onClick={()=>setIdx(Math.min(slides.length-1, idx+1))} className="p-3 bg-slate-700 rounded-full hover:bg-slate-600 text-white transition-colors"><Icon path={ICONS.ChevronRight}/></button>
+                                    <div className="w-px bg-white/10 mx-2"></div>
+                                    <button onClick={download} className="px-6 py-3 bg-orange-600 rounded-full font-bold hover:bg-orange-500 flex items-center gap-2 text-sm text-white transition-colors"><Icon path={ICONS.Download} size={16}/> Speichern</button>
+                                </div>
+                            </div>
+                            
+                            {/* Notes Sidebar */}
+                            <div className="w-full md:w-80 bg-[#0b0f19] border-l border-white/10 p-6 overflow-y-auto hidden md:block">
+                                <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-xl">
+                                    <h4 className="text-xs uppercase font-bold text-yellow-500 mb-2 flex items-center gap-2"><Icon path={ICONS.Brain} size={14}/> Sprechertext</h4>
+                                    <p className="text-slate-300 leading-relaxed text-sm">{slides[idx].flashcard}</p>
                                 </div>
                             </div>
                         </div>
@@ -379,68 +452,20 @@
             );
         };
 
-        const LearnModule = ({ apiKey, onBack }) => {
-            const [chat, setChat] = useState([]);
-            const [input, setInput] = useState("");
-            const [loading, setLoading] = useState(false);
-            const [file, setFile] = useState(null);
-            
-            const chatEnd = useRef(null);
-            useEffect(() => chatEnd.current?.scrollIntoView({ behavior: 'smooth' }), [chat, loading]);
-            
-            const handleFile = (e) => {
-                const f = e.target.files[0];
-                if(f) { const r = new FileReader(); r.onload=ev=>setFile(ev.target.result); r.readAsDataURL(f); }
-            };
-
-            const send = async () => {
-                if (!input.trim() && !file) return;
-                const userMsg = { role: 'user', text: input, img: file };
-                setChat(prev => [...prev, userMsg]);
-                setInput(""); setFile(null); setLoading(true);
-                try {
-                    const text = await generateAI(userMsg.text, "Du bist ein Tutor.", apiKey, null, userMsg.img?.split(',')[1]);
-                    let img = null;
-                    if (userMsg.text.length < 50 && !userMsg.img) img = await searchImage(userMsg.text); 
-                    setChat(prev => [...prev, { role: 'model', text, img }]);
-                } catch (e) { setChat(prev => [...prev, { role: 'model', text: "Fehler: " + e.message }]); }
-                setLoading(false);
-            };
-
-            return (
-                 <div className="h-full flex flex-col bg-slate-950">
-                    <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#0b0f19]">
-                        <h2 className="font-bold text-blue-400 flex gap-2"><Icon path={ICONS.Brain}/> Lernen</h2>
-                        <button onClick={onBack}><Icon path={ICONS.Back}/></button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {chat.map((m, i) => (
-                            <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                                {m.img && <img src={m.img} className="mb-2 w-48 rounded-lg" />}
-                                <div className={`max-w-[85%] p-4 rounded-xl ${m.role === 'user' ? 'bg-blue-600' : 'bg-slate-800'}`}>{m.text}</div>
-                            </div>
-                        ))}
-                        {loading && <div className="text-slate-500 text-xs animate-pulse">KI schreibt...</div>}
-                        <div ref={chatEnd}></div>
-                    </div>
-                    <div className="p-4 bg-[#0b0f19] border-t border-white/10 flex gap-2">
-                        <label className="p-2 bg-slate-800 rounded-lg cursor-pointer"><Icon path={ICONS.Image}/><input type="file" className="hidden" onChange={handleFile}/></label>
-                        <input className="flex-1 bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white" placeholder="Nachricht..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} />
-                        <button onClick={()=>send()} className="p-2 bg-blue-600 rounded-lg text-white"><Icon path={ICONS.Send}/></button>
-                    </div>
-                </div>
-            );
-        };
-
+        // --- ROOT APP ---
         const App = () => {
             const [key, setKey] = useState(getKey());
             const [currentModule, setCurrentModule] = useState(null);
-            useEffect(() => { const k = getKey(); if (k) setKey(k); }, []);
-            
+
+            useEffect(() => {
+                const k = getKey();
+                if (k) setKey(k);
+            }, []);
+
             if (currentModule === 'learn') return <LearnModule apiKey={key} onBack={() => setCurrentModule(null)} />;
             if (currentModule === 'plan') return <PlanModule apiKey={key} onBack={() => setCurrentModule(null)} />;
             if (currentModule === 'pres') return <PresModule apiKey={key} onBack={() => setCurrentModule(null)} />;
-            
+
             return <Home onNavigate={setCurrentModule} hasKey={!!key} setKey={setKey} />;
         };
 
