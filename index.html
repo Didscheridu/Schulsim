@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>SchulSim AI 6.1 (Ultimate)</title>
+    <title>SchulSim AI 6.2 (Functional Fix)</title>
     
     <!-- Frameworks -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -74,7 +74,6 @@
         // ==========================================
         // STEALTH KONFIGURATION
         // ==========================================
-        // Teile deinen Key hier auf.
         const KEY_PART_1 = "AIzaSyCb4nqoilymX4lPn9EOUsZq-"; 
         const KEY_PART_2 = "oKnIISDWAg"; 
         // ==========================================
@@ -131,7 +130,7 @@
                 }, 4);
                 return () => clearInterval(timer);
             }, [text]);
-            return <span className="whitespace-pre-wrap">{display.split('**').map((s,i) => i%2===1 ? <strong key={i} className="text-nexus-500 font-bold">{s}</strong> : s)}</span>;
+            return <span className="whitespace-pre-wrap">{display.split('**').map((s,i) => i%2===1 ? <strong key={i} className="text-indigo-400 font-bold">{s}</strong> : s)}</span>;
         };
 
         // --- KEY ASSEMBLER ---
@@ -253,6 +252,7 @@
             
             const [showLegal, setShowLegal] = useState(false);
             const [showCookieBanner, setShowCookieBanner] = useState(true);
+            const [showKeyInput, setShowKeyInput] = useState(false);
 
             const chatEndRef = useRef(null);
 
@@ -281,8 +281,9 @@
                  setLoadText(null);
             };
 
-            const handleStart = async (m, sub = null) => {
-                if (!topic && !file && mode!=='plan') { alert("Bitte Thema eingeben!"); return; }
+            const run = async (m, sub = null) => {
+                // Topic ist NICHT nötig für Planer, wenn man Ziele direkt eingibt
+                if (!topic && !file && m!=='plan') { alert("Bitte Thema eingeben!"); return; }
                 if (!key) { setShowKey(true); return; }
                 
                 setView("classroom"); setLoading(true); setMessages([]);
@@ -310,11 +311,13 @@
                         setSlides([...parsed]); setLoadText(null);
                     } else if (modeName === 'plan') {
                         setLoadText("Erstelle Lernplan...");
+                        // Hier wird das Topic ignoriert, wenn Plan-Optionen da sind
                         const json = await generateContent([], `Ziel: ${planOpts.goal}. Datum: ${planOpts.date}`, null, 'plan', key);
                         setPlan(JSON.parse(json));
                         setLoadText(null);
                     } else {
                         setLoadText("Herr Lehrer denkt nach...");
+                        // Nur suchen, wenn kein Bild da ist UND es kein reiner Textmodus ist
                         if (!currentImg && !file && modeName !== 'homework_solve' && modeName !== 'correction') {
                              searchInternetImage(topic, (t)=>setLoadText(t), key).then(img => { setCurrentImg(img); setLoadText(null); });
                         }
@@ -350,12 +353,11 @@
                     
                     <div className="z-10 flex flex-col items-center pt-10 pb-6 px-4 animate-fade-in-up">
                         <div className="inline-block p-5 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-3xl shadow-2xl mb-4"><Icon d={PATHS.GraduationCap} size={56} /></div>
-                        <h1 className="text-5xl font-black mb-2 tracking-tight">SchulSim AI 6.1</h1>
-                        <p className="text-cyan-400 font-bold tracking-widest text-xs uppercase">Plan & Build Edition</p>
-                        {/* KEY DISPLAY - READ ONLY IF SET */}
-                        <div className={`mt-4 px-3 py-1 rounded-full border text-xs font-bold flex gap-2 ${key ? 'border-cyan-500 text-cyan-400 bg-cyan-900/20' : 'border-red-500 text-red-400 cursor-pointer'}`} onClick={() => !key && setShowKey(true)}>
-                           <Icon d={PATHS.Key} size={14}/> {key ? "System Bereit" : "Key fehlt (Klick)"}
-                        </div>
+                        <h1 className="text-5xl font-black mb-2 tracking-tight">SchulSim AI 6.2</h1>
+                        <p className="text-cyan-400 font-bold tracking-widest text-xs uppercase">Functional Edition</p>
+                        <button onClick={()=>setShowKeyInput(true)} className={`mt-4 px-3 py-1 rounded-full border text-xs font-bold flex gap-2 ${key ? 'border-cyan-500 text-cyan-400 bg-cyan-900/20' : 'border-red-500 text-red-400'}`}>
+                           <Icon d={PATHS.Key} size={14}/> {key ? "System Bereit" : "Key fehlt"}
+                        </button>
                     </div>
 
                     <div className="w-full max-w-6xl px-4 pb-20 grid grid-cols-1 md:grid-cols-3 gap-6 mx-auto animate-fade-in-up" style={{animationDelay: '0.1s'}}>
@@ -401,134 +403,99 @@
                         </div>
                     </div>
                     
-                    {showKey && (
-                        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
+                    {showKeyInput && (
+                        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 z-50">
                             <div className="bg-slate-900 p-6 rounded-2xl w-full max-w-md border border-slate-700">
                                 <h3 className="font-bold mb-4">API Key Setup</h3>
                                 <input className="w-full bg-black/50 p-2 rounded text-white border border-slate-600 mb-4" placeholder="AIza..." onKeyDown={e=>e.key==='Enter'&&handleSaveKey(e.target.value)} />
-                                <div className="flex gap-2"><button onClick={(e)=>handleSaveKey(e.target.previousSibling.value)} className="flex-1 bg-blue-600 py-2 rounded font-bold">Speichern</button><button onClick={()=>setShowKey(false)} className="px-4 py-2">Abbrechen</button></div>
+                                <div className="flex gap-2"><button onClick={(e)=>handleSaveKey(e.target.previousSibling.value)} className="flex-1 bg-blue-600 py-2 rounded font-bold">Speichern</button><button onClick={()=>setShowKeyInput(false)} className="px-4 py-2">Abbrechen</button></div>
                             </div>
                         </div>
                     )}
-                    
                     <div className="w-full text-center pb-8 mt-auto z-10"><button onClick={() => setShowLegal(true)} className="text-[10px] text-slate-500 hover:text-white transition-colors">Rechtliches</button></div>
-                        {showLegal && (
-                          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                            <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl max-h-[85vh] rounded-2xl flex flex-col shadow-2xl relative">
-                              <div className="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 rounded-t-2xl z-10"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon d={PATHS.FileText} className="text-indigo-400"/> Rechtliche Hinweise</h2><button onClick={() => setShowLegal(false)} className="text-slate-400 hover:text-white"><Icon d={PATHS.X} /></button></div>
-                              <div className="p-6 overflow-y-auto space-y-8 text-sm text-slate-300">
-                                <section><h3 className="font-bold text-white mb-2">Impressum</h3><p>Kayden Schunack<br/>Kontakt: didskanal@gmail.com</p></section>
-                                <section><h3 className="font-bold text-white mb-2">Datenschutz</h3><p>Keine dauerhafte Speicherung personenbezogener Daten.</p></section>
-                              </div>
-                            </div>
+                    {showLegal && (
+                      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                        <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl max-h-[85vh] rounded-2xl flex flex-col shadow-2xl relative">
+                          <div className="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 rounded-t-2xl z-10"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon d={PATHS.FileText} className="text-indigo-400"/> Rechtliche Hinweise</h2><button onClick={() => setShowLegal(false)} className="text-slate-400 hover:text-white"><Icon d={PATHS.X} /></button></div>
+                          <div className="p-6 overflow-y-auto space-y-8 text-sm text-slate-300">
+                            <section><h3 className="font-bold text-white mb-2">Impressum</h3><p>Kayden Schunack<br/>Kontakt: didskanal@gmail.com</p></section>
+                            <section><h3 className="font-bold text-white mb-2">Datenschutz</h3><p>Keine dauerhafte Speicherung personenbezogener Daten.</p></section>
+                            <section><h3 className="font-bold text-white mb-2">Bildquellen</h3><p>Bilder werden über die Wikimedia Commons API bezogen oder sind gemeinfrei.</p></section>
                           </div>
-                        )}
-                        {showCookieBanner && (
-                          <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 p-4 z-50 flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl">
-                            <div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-full text-blue-400"><Icon d={PATHS.Cookie} size={20} /></div><p className="text-xs text-slate-300">Wir verwenden Cookies.</p></div>
-                            <button onClick={() => setShowCookieBanner(false)} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg font-bold">Akzeptieren</button>
-                          </div>
-                        )}
+                        </div>
+                      </div>
+                    )}
+                    {showCookieBanner && (
+                      <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 p-4 z-50 flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl">
+                        <div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-full text-blue-400"><Icon d={PATHS.Cookie} size={20} /></div><p className="text-xs text-slate-300">Wir verwenden Cookies.</p></div>
+                        <button onClick={() => setShowCookieBanner(false)} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg font-bold">Akzeptieren</button>
+                      </div>
+                    )}
                 </div>
             );
 
             // --- CLASSROOM VIEW ---
             return (
-                <div className="h-dvh flex flex-col md:flex-row bg-slate-950 overflow-hidden relative text-slate-200">
-                    
-                    {/* BUILDER LOADING OVERLAY */}
-                    {loading && (mode === 'presentation' || mode === 'plan') && (
-                        <div className="absolute inset-0 z-50 bg-[#0f172a]/95 backdrop-blur-xl flex flex-col items-center justify-center">
-                            <div className="relative">
-                                <Icon d={mode==='plan'?PATHS.Calendar:PATHS.Presentation} size={64} className="text-orange-500 mb-4 animate-bounce" />
-                                <div className="absolute -right-8 -bottom-4 animate-type text-cyan-400"><Icon d={PATHS.Mouse} size={32}/></div>
-                            </div>
-                            <h2 className="text-3xl font-black text-white mb-2">{mode==='plan'?'Plane Lernen...':'Erstelle Präsentation...'}</h2>
-                            <p className="text-cyan-400 font-mono text-sm animate-pulse">{loadText || "Initialisiere..."}</p>
-                            <div className="w-64 h-1 bg-slate-800 rounded-full mt-6 overflow-hidden">
-                                <div className="h-full bg-orange-500 animate-scan w-full relative"></div>
-                            </div>
+                <div className="h-dvh flex flex-col md:flex-row bg-slate-950 overflow-hidden text-slate-100">
+                    <div className="h-[40%] md:h-full md:w-1/2 border-r border-white/5 flex flex-col bg-[#0F1115]">
+                        <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#0F1115]">
+                            <span className="font-bold text-indigo-400 flex items-center gap-2"><Icon d={PATHS.ImageIcon} size={18}/> Tafel</span>
+                            <button onClick={reset} className="text-xs text-red-400 font-bold border border-red-900/30 px-3 py-1 rounded-lg hover:bg-red-900/20">BEENDEN</button>
                         </div>
-                    )}
-
-                    {/* CONTENT */}
-                    <div className="flex-1 flex flex-col md:flex-row h-full">
-                         {/* LEFT: Visuals */}
-                         <div className="h-[40%] md:h-full md:w-1/2 border-r border-white/5 flex flex-col bg-[#0b0f17] relative">
-                            <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#0b0f17]">
-                                <span className="font-bold text-cyan-400 flex items-center gap-2"><Icon d={PATHS.ImageIcon} size={18}/> {mode==='plan'?'Lernplan':'Tafel'}</span>
-                                <button onClick={reset} className="text-xs text-red-400 border border-red-900/30 px-3 py-1 rounded hover:bg-red-900/20">ZURÜCK</button>
-                            </div>
+                        <div className="flex-1 p-6 flex flex-col items-center justify-center bg-black/20 overflow-hidden relative">
+                            {loading && <div className="absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-center"><Icon d={PATHS.Refresh} className="animate-spin text-orange-500 mb-2" size={48}/><p className="animate-pulse">{loadText || "Denke nach..."}</p></div>}
                             
-                            <div className="flex-1 p-6 flex flex-col items-center justify-center overflow-auto relative">
-                                {mode === 'plan' && plan.length > 0 ? (
-                                    <div className="w-full h-full overflow-y-auto pr-2 space-y-4">
-                                        {plan.map((day, i) => (
-                                            <div key={i} className="bg-slate-800 p-4 rounded-xl border-l-4 border-emerald-500 shadow-lg animate-fade-in" style={{animationDelay: `${i*0.1}s`}}>
-                                                <div className="flex justify-between mb-2">
-                                                    <span className="font-bold text-emerald-400 text-lg">{day.day}</span>
-                                                    <span className="text-xs bg-black/30 px-2 py-1 rounded text-slate-400">{day.type || 'Lernen'}</span>
-                                                </div>
-                                                <p className="text-sm text-slate-300">{day.task}</p>
-                                            </div>
-                                        ))}
+                            {mode === 'presentation' && slides.length > 0 ? (
+                                <div className={`w-full aspect-video ${dObj.bg} ${dObj.text} rounded-xl shadow-2xl p-6 flex flex-col overflow-hidden border-4 border-white/5`}>
+                                    <h2 className="text-2xl font-bold border-b pb-4 mb-4 truncate">{slides[slideIdx].title}</h2>
+                                    <div className="flex flex-1 gap-4 overflow-hidden">
+                                        <div className="flex-1 overflow-y-auto"><ul className="space-y-2">{slides[slideIdx].content.map((c,i)=><li key={i} className="text-sm flex gap-2"><span className="text-blue-500">•</span>{c}</li>)}</ul></div>
+                                        {slides[slideIdx].imageUrl && <div className="w-1/3 h-full relative"><img src={slides[slideIdx].imageUrl} className="w-full h-full object-contain rounded-lg shadow-sm bg-black/5" /><button onClick={handleReloadImage} className="absolute bottom-2 right-2 bg-black/60 p-1.5 rounded-full hover:bg-black/80 text-white shadow-lg" title="Neues Bild"><Icon d={PATHS.Refresh} size={14}/></button></div>}
                                     </div>
-                                ) : mode === 'presentation' && slides.length > 0 ? (
-                                    <div className={`w-full aspect-video ${dObj.bg} ${dObj.text} rounded-xl shadow-2xl p-6 flex flex-col overflow-hidden border-4 border-white/5 relative group`}>
-                                        <h2 className="text-2xl font-bold border-b pb-4 mb-4 truncate">{slides[slideIdx].title}</h2>
-                                        <div className="flex flex-1 gap-4 overflow-hidden">
-                                            <ul className="flex-1 space-y-2 overflow-y-auto">{slides[slideIdx].content.map((c,i)=><li key={i} className="text-sm flex gap-2"><span className="text-blue-500">•</span>{c}</li>)}</ul>
-                                            {slides[slideIdx].imageUrl && <div className="w-1/3 h-full relative group-hover:scale-105 transition-transform duration-500"><img src={slides[slideIdx].imageUrl} className="w-full h-full object-cover rounded-lg shadow-sm" /><button onClick={handleReloadImage} className="absolute bottom-2 right-2 bg-black/50 hover:bg-black/80 p-1.5 rounded-full text-white"><Icon d={PATHS.Refresh} size={12}/></button></div>}
+                                    <div className="mt-4 flex justify-between items-center">
+                                        <div className="flex gap-2">
+                                            <button onClick={()=>setSlideIdx(s=>Math.max(0,s-1))} disabled={slideIdx===0} className="p-2 bg-black/10 rounded-full disabled:opacity-30"><Icon d={PATHS.ChevronLeft}/></button>
+                                            <span className="text-xs">{slideIdx+1}/{slides.length}</span>
+                                            <button onClick={()=>setSlideIdx(s=>Math.min(slides.length-1,s+1))} disabled={slideIdx===slides.length-1} className="p-2 bg-black/10 rounded-full disabled:opacity-30"><Icon d={PATHS.ChevronRight}/></button>
                                         </div>
-                                        <div className="mt-4 flex justify-between items-center">
-                                            <div className="flex gap-2">
-                                                <button onClick={()=>setSlideIdx(Math.max(0,slideIdx-1))} className="p-2 bg-black/10 rounded-full"><Icon d={PATHS.ChevronLeft}/></button>
-                                                <button onClick={()=>setSlideIdx(Math.min(slides.length-1,slideIdx+1))} className="p-2 bg-black/10 rounded-full"><Icon d={PATHS.ChevronRight}/></button>
-                                            </div>
-                                            <button onClick={downloadPPT} className="text-xs bg-orange-600 text-white px-3 py-1 rounded">PPTX</button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    currentImg ? <div className="relative w-full h-full flex items-center justify-center"><img src={currentImg} className="max-h-full max-w-full rounded-xl shadow-2xl object-contain border border-white/10" />{(mode==='explain'||mode==='homework')&&<button onClick={handleDownloadImage} className="absolute bottom-4 right-4 bg-blue-600 p-2 rounded-full shadow-lg"><Icon d={PATHS.Download} size={16}/></button>}</div>
-                                    : loading ? <div className="animate-pulse text-cyan-500">Lade Inhalte...</div> : <Icon d={PATHS.ImageIcon} size={64} className="text-slate-800"/>
-                                )}
-                            </div>
-                         </div>
-
-                         {/* RIGHT: Chat */}
-                         <div className="h-[60%] md:h-full md:w-1/2 flex flex-col bg-slate-950 relative border-l border-white/5">
-                            <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-24">
-                                {mode === 'presentation' && slides.length > 0 ? (
-                                    <div className="bg-amber-50 text-slate-800 p-6 rounded-lg shadow-xl font-serif border-l-4 border-yellow-400 rotate-1">
-                                        <h4 className="text-xs font-bold uppercase opacity-50 mb-2">Sprechertext</h4>
-                                        <p>{slides[slideIdx].flashcard}</p>
-                                    </div>
-                                ) : (
-                                    messages.map((m, i) => (
-                                        <div key={i} className={`flex ${m.role==='user'?'justify-end':'justify-start'}`}>
-                                            <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-lg ${m.role==='user'?'bg-nexus-500 rounded-tr-none':'bg-slate-800 border border-white/10 rounded-tl-none'}`}>
-                                                <Typewriter text={m.text} />
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                                <div ref={chatEnd}></div>
-                            </div>
-                            
-                            {mode !== 'presentation' && mode !== 'plan' && (
-                                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 to-transparent">
-                                    <div className="flex items-center bg-slate-900 border border-white/10 rounded-full px-2 py-1 shadow-2xl">
-                                        <input className="flex-1 bg-transparent px-4 py-2 outline-none text-sm" placeholder="Nachricht..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSend()} />
-                                        <button onClick={handleSend} className="p-2 bg-nexus-500 rounded-full ml-2"><Icon d={PATHS.Send} size={18} /></button>
+                                        <button onClick={downloadPPT} className="text-xs flex items-center gap-1 bg-orange-600 text-white px-3 py-1 rounded shadow hover:bg-orange-500"><Icon d={PATHS.Download} size={12}/> PPTX</button>
                                     </div>
                                 </div>
+                            ) : mode === 'plan' && plan.length > 0 ? (
+                                <div className="w-full h-full overflow-y-auto pr-2 space-y-4">
+                                    {plan.map((day, i) => (
+                                        <div key={i} className="bg-slate-800 p-4 rounded-xl border-l-4 border-emerald-500 shadow-lg animate-fade-in" style={{animationDelay: `${i*0.1}s`}}>
+                                            <div className="flex justify-between mb-2">
+                                                <span className="font-bold text-emerald-400 text-lg">{day.day}</span>
+                                                <span className="text-xs bg-black/30 px-2 py-1 rounded text-slate-400">{day.type || 'Lernen'}</span>
+                                            </div>
+                                            <p className="text-sm text-slate-300">{day.task}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                currentImg ? <div className="relative w-full h-full flex items-center justify-center"><img src={currentImg} className="max-h-full max-w-full rounded-xl shadow-2xl object-contain border border-white/10" />{(mode==='explain'||mode==='homework')&&<button onClick={handleDownloadImage} className="absolute bottom-4 right-4 bg-blue-600 p-2 rounded-full shadow-lg"><Icon d={PATHS.Download} size={16}/></button>}</div>
+                                : <div className="text-slate-800 animate-pulse"><Icon d={PATHS.ImageIcon} size={128}/></div>
                             )}
-                         </div>
+                        </div>
+                    </div>
+                    <div className="h-[60%] md:h-full md:w-1/2 flex flex-col bg-slate-950 relative">
+                        <div className="p-4 border-b border-white/5 flex items-center gap-3 bg-slate-900/50 shrink-0">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div><span className="font-bold text-sm">Herr Lehrer (KI)</span>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4 pb-28">
+                            {slides.length > 0 ? (
+                                <div className="bg-amber-50 text-slate-800 p-6 rounded-lg shadow-xl font-serif border-l-4 border-yellow-400"><h4 className="text-xs uppercase opacity-50 mb-2 font-sans font-bold">Folie {slideIdx+1}:</h4><p className="text-lg leading-relaxed">{slides[slideIdx].flashcard}</p></div>
+                            ) : (
+                                messages.map((m, i) => <div key={i} className={`flex ${m.role === 'model' ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-lg ${m.role === 'model' ? 'bg-slate-800 border border-white/5 rounded-tl-none' : 'bg-indigo-600 rounded-tr-none'}`}><Typewriter text={m.parts[0].text} /></div></div>)
+                            )}
+                            <div ref={chatEndRef}></div>
+                        </div>
+                        {!slides.length && mode !== 'plan' && <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950 to-transparent"><div className="flex items-center bg-slate-900 border border-white/10 rounded-full px-4 py-1 shadow-2xl focus-within:border-indigo-500 transition-all"><input className="flex-1 bg-transparent py-3 outline-none text-sm" placeholder="Nachricht..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter' && handleSend()} /><button onClick={handleSend} className="bg-indigo-600 p-2 rounded-full ml-2"><Icon d={PATHS.Send} size={18} /></button></div></div>}
                     </div>
                 </div>
             );
         };
-
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
