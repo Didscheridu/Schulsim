@@ -27,18 +27,32 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Inject API Key
+      - name: Inject API Key (Safe Method)
         env:
-          # Wir laden den Key sicher in eine Umgebungsvariable
+          # Wir laden den Key in die Umgebung
           MY_SECRET_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          # Prüfen, ob der Key existiert
           if [ -z "$MY_SECRET_KEY" ]; then
             echo "ACHTUNG: Secret GEMINI_API_KEY wurde nicht gefunden!"
           else
-            # Ersetze den Platzhalter sicher durch den Key
-            sed -i "s|__GEMINI_API_KEY__|$MY_SECRET_KEY|g" index.html
-            echo "Key wurde erfolgreich eingefügt."
+            # Wir nutzen Python, um den Text sicher zu ersetzen (keine Probleme mit Sonderzeichen)
+            python3 -c "
+import os
+key = os.environ.get('MY_SECRET_KEY', '')
+try:
+    with open('index.html', 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # Ersetze den Platzhalter sicher
+    new_content = content.replace('__GEMINI_API_KEY__', key)
+    
+    with open('index.html', 'w', encoding='utf-8') as f:
+        f.write(new_content)
+    print('Key wurde erfolgreich eingefügt.')
+except Exception as e:
+    print(f'Fehler beim Einfügen des Keys: {e}')
+    exit(1)
+"
           fi
 
       - name: Upload Artifact
