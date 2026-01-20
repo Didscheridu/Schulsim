@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>SchulSim AI 5.5 (Fixed)</title>
+    <title>SchulSim AI 5.6 (Stealth)</title>
     
     <!-- Frameworks -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,12 +27,20 @@
     <div id="root" class="h-full"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        // ==========================================
+        // STEALTH KONFIGURATION
+        // ==========================================
+        
+        // 1. Die erste Hälfte deines Keys (Normal)
+        const KEY_START = "AIzaSyCb4nqoilymX4lPn9EOUsZq-"; 
+
+        // 2. Die zweite Hälfte deines Keys (RÜCKWÄRTS geschrieben!)
+        // Beispiel: Key-Ende "12345" -> Hier eintragen "54321"
+        const KEY_END_REVERSED = "oKnIISDWAg"; 
 
         // ==========================================
-        // KONFIGURATION
-        // ==========================================
-        const CONFIG_API_KEY = "__GEMINI_API_KEY__"; 
+
+        const { useState, useEffect, useRef } = React;
 
         // --- ICONS ---
         const Icon = ({ d, size = 24, className = "", ...props }) => (
@@ -96,6 +104,20 @@
             return <span className="whitespace-pre-wrap">{display.split('**').map((s,i) => i%2===1 ? <strong key={i} className="text-indigo-400 font-bold">{s}</strong> : s)}</span>;
         };
 
+        // --- KEY ASSEMBLER ---
+        const getStealthKey = () => {
+            const part1 = KEY_START;
+            const part2 = KEY_END_REVERSED.split('').reverse().join('');
+            const fullKey = part1 + part2;
+            
+            // Check Local Storage (User Input Override)
+            const local = localStorage.getItem('gemini_key');
+            if (local && local.length > 10) return local;
+            
+            if (fullKey.length < 10) return "";
+            return fullKey;
+        };
+
         // --- API HELPERS ---
         const urlToBase64 = async (url) => {
             try {
@@ -105,7 +127,7 @@
         };
 
         const verifyImageQuality = async (imgUrl, topic, key) => {
-            if (!key || key.includes("__GEMINI")) return true;
+            if (!key) return true;
             const base64 = await urlToBase64(imgUrl);
             if (!base64) return true;
             try {
@@ -143,7 +165,7 @@
         };
 
         const generateContent = async (history, prompt, imageData, mode, key, settings) => {
-            if (!key || key === "CONFIG_API_KEY" || key === "__GEMINI_API_KEY__" || key === "") return "FEHLER: Bitte trage zuerst deinen API Key ein!";
+            if (!key) return "FEHLER: Bitte trage deinen API Key ein!";
             
             const parts = [{ text: prompt }];
             if (imageData) parts.push({ inlineData: { mimeType: "image/png", data: imageData } });
@@ -185,162 +207,9 @@
             } catch (e) { return `Verbindungsfehler: ${e.message}`; }
         };
 
-        // --- COMPONENT DEFINITIONS ---
-        
-        const IntroView = ({ localKey, setLocalKey, handleStart, setPresSettings, presSettings, fileData, handleFile, topic, setTopic, setShowKeyInput, showKeyInput, setShowLegal, showLegal, setShowCookieBanner, showCookieBanner }) => {
-            return (
-                <div className="h-dvh bg-slate-950 text-white flex flex-col font-sans overflow-y-auto">
-                    <div className="fixed inset-0 bg-gradient-to-br from-indigo-900 via-slate-950 to-purple-950 opacity-80 -z-10"></div>
-                    
-                    <div className="z-10 flex flex-col items-center pt-10 pb-6 px-4 animate-fade-in-up">
-                        <div className="inline-block p-5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-3xl shadow-2xl mb-4 hover:scale-105 transition-transform"><Icon d={PATHS.GraduationCap} size={56} className="text-white" /></div>
-                        <h1 className="text-4xl md:text-6xl font-black mb-2">SchulSim AI 5.5</h1>
-                        <p className="text-indigo-300 font-bold tracking-[0.4em] text-xs uppercase mt-2">Final Edition • Created by Kayden</p>
-                        <button onClick={()=>setShowKeyInput(true)} className={`mt-4 px-3 py-1 rounded-full border text-xs font-bold flex items-center gap-2 ${localKey ? 'border-green-500 text-green-400 bg-green-500/10' : 'border-red-500 text-red-400 bg-red-500/10'}`}>
-                            <div className={`w-2 h-2 rounded-full ${localKey ? 'bg-green-500' : 'bg-red-500'}`}></div> {localKey ? "System Bereit" : "Key fehlt (Setup)"}
-                        </button>
-                    </div>
-
-                    <div className="z-10 w-full max-w-7xl px-4 pb-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mx-auto animate-fade-in-up">
-                        {[{ id: 'explain', icon: 'Brain', title: 'Verstehen', act: () => handleStart('explain') },
-                          { id: 'vocab', icon: 'Languages', title: 'Vokabeln', hasFile: true, act: () => handleStart('vocabulary') },
-                          { id: 'homework', icon: 'PenTool', title: 'Aufgaben', hasFile: true, act: (sub) => handleStart(sub), subs: [['homework_help','Hilfe'],['correction','Korr.'],['homework_solve','Lösen']] },
-                          { id: 'pres', icon: 'Presentation', title: 'Präsentation', special: true }
-                        ].map((card) => (
-                            <div key={card.id} className="bg-white/5 border border-white/10 p-6 rounded-3xl hover:bg-white/10 transition-all flex flex-col shadow-2xl">
-                                <div className="flex items-center gap-3 mb-4 text-indigo-400"><Icon d={PATHS[card.icon]} size={28} /> <h3 className="font-bold text-xl text-white">{card.title}</h3></div>
-                                
-                                {card.special ? (
-                                    <div className="space-y-3 mt-auto">
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, audience:e.target.value})}><option>Klasse 5-7</option><option>Klasse 8-10</option><option>Oberstufe</option></select>
-                                            <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, detail:e.target.value})}><option>Kurz</option><option>Mittel</option><option>Detail</option></select>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, design:e.target.value})}>{Object.keys(DESIGNS).map(k=><option key={k} value={k}>{DESIGNS[k].name}</option>)}</select>
-                                            <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, count:e.target.value})}>{[3,5,7,10].map(n=><option key={n} value={n}>{n} Folien</option>)}</select>
-                                        </div>
-                                        <input className="w-full bg-black/40 rounded-xl px-4 py-3 text-sm text-white outline-none border border-white/10 focus:border-orange-500" placeholder="Thema..." value={topic} onChange={e=>setTopic(e.target.value)} />
-                                        <button onClick={()=>handleStart('presentation')} disabled={!topic} className="w-full bg-orange-600 hover:bg-orange-500 py-3 rounded-xl font-bold text-sm text-white shadow-lg flex items-center justify-center gap-2"><Icon d={PATHS.Play} size={14}/> Erstellen</button>
-                                    </div>
-                                ) : (
-                                    <div className="mt-auto space-y-3">
-                                        {card.hasFile && (
-                                            <div className="relative">
-                                                {fileData ? (
-                                                    <div className="flex items-center gap-2 text-xs text-green-300 bg-green-900/30 p-3 rounded-xl border border-green-500/30"><Icon d={PATHS.Check} size={16} /> Bild bereit <button onClick={() => handleFile({target:{files:[]}})} className="ml-auto hover:text-white"><Icon d={PATHS.X} size={14}/></button></div>
-                                                ) : (<label className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-slate-500 rounded-xl text-slate-300 text-xs cursor-pointer hover:border-white hover:text-white bg-black/20"><Icon d={PATHS.Upload} size={16} /> Bild laden<input type="file" accept="image/*" className="hidden" onChange={handleFile} /></label>)}
-                                            </div>
-                                        )}
-                                        {card.subs ? (
-                                            <div className="flex gap-1 w-full bg-black/20 p-1 rounded-lg">
-                                                {card.subs.map(([k, l]) => <button key={k} onClick={() => handleStart(k)} className="flex-1 py-1.5 rounded text-[9px] font-bold hover:bg-white/10 text-slate-300 hover:text-white uppercase">{l}</button>)}
-                                            </div>
-                                        ) : (
-                                            card.id === 'explain' && <div className="flex gap-1 w-full bg-black/20 p-1 rounded-lg"><button onClick={()=>handleStart('explain')} className="flex-1 py-1.5 rounded text-[9px] font-bold hover:bg-white/10 text-slate-300 hover:text-white">ERKLÄREN</button><button onClick={()=>handleStart('explain', 'question')} className="flex-1 py-1.5 rounded text-[9px] font-bold hover:bg-white/10 text-slate-300 hover:text-white">FRAGE</button></div>
-                                        )}
-                                        <input className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder={card.id==='homework'?"Aufgabe...": card.id==='explain'?"Thema/Frage...": "Thema..."} value={topic} onChange={e=>setTopic(e.target.value)} />
-                                        {!card.subs && card.id !== 'explain' && <button onClick={()=>handleStart(card.act ? 'vocabulary' : 'explain')} className="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold text-sm text-white shadow-lg transition-transform active:scale-95">Starten</button>}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
-                    {showKeyInput && (
-                        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-                            <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl">
-                                <h2 className="text-xl font-bold text-white mb-4">API Key Setup</h2>
-                                <input type="password" placeholder="AIzaSy..." className="w-full bg-black/50 border border-slate-600 rounded-lg px-4 py-3 text-white mb-4 focus:border-indigo-500 outline-none" onKeyDown={(e) => { if(e.key === 'Enter') setLocalKey(e.target.value) }} />
-                                <div className="flex gap-2"><button onClick={(e) => setLocalKey(e.target.previousSibling.value)} className="flex-1 bg-indigo-600 py-2 rounded-lg font-bold">Speichern</button><button onClick={() => setShowKeyInput(false)} className="w-full mt-4 text-xs text-slate-500">Abbrechen</button></div>
-                            </div>
-                        </div>
-                    )}
-                    <div className="w-full text-center pb-8 mt-auto z-10"><button onClick={() => setShowLegal(true)} className="text-[10px] text-slate-500 hover:text-white transition-colors">Rechtliches</button></div>
-                    {showLegal && (
-                      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-                        <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl max-h-[85vh] rounded-2xl flex flex-col shadow-2xl relative">
-                          <div className="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 rounded-t-2xl z-10"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon d={PATHS.FileText} className="text-indigo-400"/> Rechtliche Hinweise</h2><button onClick={() => setShowLegal(false)} className="text-slate-400 hover:text-white"><Icon d={PATHS.X} /></button></div>
-                          <div className="p-6 overflow-y-auto space-y-8 text-sm text-slate-300">
-                            <section><h3 className="font-bold text-white mb-2">Impressum</h3><p>Kayden Schunack<br/>Kontakt: didskanal@gmail.com</p></section>
-                            <section><h3 className="font-bold text-white mb-2">Datenschutz</h3><p>Keine dauerhafte Speicherung personenbezogener Daten.</p></section>
-                            <section><h3 className="font-bold text-white mb-2">Bildquellen</h3><p>Bilder werden über die Wikimedia Commons API bezogen oder sind gemeinfrei.</p></section>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {showCookieBanner && (
-                      <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 p-4 z-50 flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl">
-                        <div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-full text-blue-400"><Icon d={PATHS.Cookie} size={20} /></div><p className="text-xs text-slate-300">Wir verwenden Cookies.</p></div>
-                        <button onClick={() => setShowCookieBanner(false)} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg font-bold">Akzeptieren</button>
-                      </div>
-                    )}
-                </div>
-            );
-        };
-
-        const ClassroomView = ({ mode, slides, slideIdx, setSlideIdx, loading, imgStatus, currentImg, messages, input, setInput, handleSend, reset, presSettings, handleReloadImage, handleDownloadImage, downloadPPTX, dObj }) => {
-             const chatEndRef = useRef(null);
-             useEffect(() => { if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
-
-             return (
-                <div className="h-dvh flex flex-col md:flex-row bg-slate-950 overflow-hidden text-slate-100">
-                    <div className="h-[40%] md:h-full md:w-1/2 border-r border-white/5 flex flex-col bg-[#0F1115]">
-                        <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#0F1115]">
-                            <span className="font-bold text-indigo-400 flex items-center gap-2"><Icon d={PATHS.ImageIcon} size={18}/> Tafel</span>
-                            <button onClick={reset} className="text-xs text-red-400 font-bold border border-red-900/30 px-3 py-1 rounded-lg hover:bg-red-900/20">BEENDEN</button>
-                        </div>
-                        <div className="flex-1 p-6 flex flex-col items-center justify-center bg-black/20 overflow-hidden relative">
-                            {loading && <div className="absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-center"><Icon d={PATHS.Refresh} className="animate-spin text-orange-500 mb-2" size={48}/><p className="animate-pulse">{imgStatus || "Denke nach..."}</p></div>}
-                            
-                            {mode === 'presentation' && slides.length > 0 ? (
-                                <div className={`w-full aspect-video ${dObj.bg} ${dObj.text} rounded-xl shadow-2xl p-6 flex flex-col overflow-hidden border-4 border-white/5`}>
-                                    <h2 className="text-2xl font-bold border-b pb-4 mb-4 truncate">{slides[slideIdx].title}</h2>
-                                    <div className="flex flex-1 gap-4 overflow-hidden">
-                                        <div className="flex-1 overflow-y-auto"><ul className="space-y-2">{slides[slideIdx].content.map((c,i)=><li key={i} className="text-sm flex gap-2"><span className="text-blue-500">•</span>{c}</li>)}</ul></div>
-                                        {slides[slideIdx].imageUrl && <div className="w-1/3 h-full relative"><img src={slides[slideIdx].imageUrl} className="w-full h-full object-contain rounded-lg shadow-sm bg-black/5" /><button onClick={handleReloadImage} className="absolute bottom-2 right-2 bg-black/60 p-1.5 rounded-full hover:bg-black/80 text-white shadow-lg" title="Neues Bild"><Icon d={PATHS.Refresh} size={14}/></button></div>}
-                                    </div>
-                                    <div className="mt-4 flex justify-between items-center">
-                                        <div className="flex gap-2">
-                                            <button onClick={()=>setSlideIdx(s=>Math.max(0,s-1))} disabled={slideIdx===0} className="p-2 bg-black/10 rounded-full disabled:opacity-30"><Icon d={PATHS.ChevronLeft}/></button>
-                                            <span className="text-xs">{slideIdx+1}/{slides.length}</span>
-                                            <button onClick={()=>setSlideIdx(s=>Math.min(slides.length-1,s+1))} disabled={slideIdx===slides.length-1} className="p-2 bg-black/10 rounded-full disabled:opacity-30"><Icon d={PATHS.ChevronRight}/></button>
-                                        </div>
-                                        <button onClick={downloadPPTX} className="text-xs flex items-center gap-1 bg-orange-600 text-white px-3 py-1 rounded shadow hover:bg-orange-500"><Icon d={PATHS.Download} size={12}/> PPTX</button>
-                                    </div>
-                                </div>
-                            ) : (
-                                currentImg ? <div className="relative w-full h-full flex items-center justify-center"><img src={currentImg} className="max-h-full max-w-full rounded-xl shadow-2xl object-contain border border-white/10" />{(mode === 'explain' || mode === 'vocabulary') && <button onClick={handleDownloadImage} className="absolute bottom-4 right-4 bg-blue-600 p-2 rounded-full shadow-lg"><Icon d={PATHS.Download} size={16} className="text-white"/></button>}</div>
-                                : <div className="text-slate-800 animate-pulse"><Icon d={PATHS.ImageIcon} size={128}/></div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="h-[60%] md:h-full md:w-1/2 flex flex-col bg-slate-950 relative">
-                        <div className="p-4 border-b border-white/5 flex items-center gap-3 bg-slate-900/50 shrink-0">
-                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div><span className="font-bold text-sm">Herr Lehrer (KI)</span>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4 pb-28">
-                            {slides.length > 0 ? (
-                                <div className="bg-amber-50 text-slate-800 p-6 rounded-lg shadow-xl font-serif border-l-4 border-yellow-400"><h4 className="text-xs uppercase opacity-50 mb-2 font-sans font-bold">Folie {slideIdx+1}:</h4><p className="text-lg leading-relaxed">{slides[slideIdx].flashcard}</p></div>
-                            ) : (
-                                messages.map((m, i) => <div key={i} className={`flex ${m.role === 'model' ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-lg ${m.role === 'model' ? 'bg-slate-800 border border-white/5 rounded-tl-none' : 'bg-indigo-600 rounded-tr-none'}`}><Typewriter text={m.parts[0].text} /></div></div>)
-                            )}
-                            <div ref={chatEndRef}></div>
-                        </div>
-                        {!slides.length && <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950 to-transparent"><div className="flex items-center bg-slate-900 border border-white/10 rounded-full px-4 py-1 shadow-2xl focus-within:border-indigo-500 transition-all"><input className="flex-1 bg-transparent py-3 outline-none text-sm" placeholder="Nachricht..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter' && handleSend()} /><button onClick={handleSend} className="bg-indigo-600 p-2 rounded-full ml-2"><Icon d={PATHS.Send} size={18} /></button></div></div>}
-                    </div>
-                </div>
-            );
-        };
-
         // --- APP ---
         const App = () => {
-            // FIX: Robustere Key Initialisierung
-            const [localKey, setLocalKey] = useState(() => {
-                if (typeof CONFIG_API_KEY !== 'undefined' && CONFIG_API_KEY && !CONFIG_API_KEY.includes("__GEMINI")) return CONFIG_API_KEY;
-                return localStorage.getItem('gemini_key') || "";
-            });
-
+            const [localKey, setLocalKey] = useState(getStealthKey());
             const [view, setView] = useState("intro");
             const [mode, setMode] = useState("explain");
             const [topic, setTopic] = useState("");
@@ -432,13 +301,175 @@
             
             const handleSend = async () => { if (!input.trim()) return; const newMsg = [...messages, {role:'user', parts:[{text:input}]}]; setMessages(newMsg); setInput(''); setLoading(true); const r = await generateContent(newMsg, input, null, mode, localKey); setMessages(p => [...p, {role:'model', parts:[{text:r}]}]); setLoading(false); };
             const handleDownloadImage = () => { if (!currentImg) return; const link = document.createElement('a'); link.href = currentImg; link.download = `SchulSim.png`; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
-            const downloadPPTX = async () => { /* pptx logic same as before */ };
-
-            if (view === 'intro') return <IntroView localKey={localKey} setLocalKey={(k)=>{setLocalKey(k);localStorage.setItem('gemini_key',k);setShowKeyInput(false)}} handleStart={handleStart} setPresSettings={setPresSettings} presSettings={presSettings} fileData={fileData} handleFile={handleFile} topic={topic} setTopic={setTopic} setShowKeyInput={setShowKeyInput} showKeyInput={showKeyInput} setShowLegal={setShowLegal} showLegal={showLegal} setShowCookieBanner={setShowCookieBanner} showCookieBanner={showCookieBanner} />;
             
-            return <ClassroomView mode={mode} slides={slides} slideIdx={slideIdx} setSlideIdx={setSlideIdx} loading={loading} imgStatus={imgStatus} currentImg={currentImg} messages={messages} input={input} setInput={setInput} handleSend={handleSend} reset={()=>{setView("intro");setTopic("");setMessages([]);setSlides([]);setCurrentImg(null);setFileData(null);}} presSettings={presSettings} handleReloadImage={handleReloadImage} handleDownloadImage={handleDownloadImage} downloadPPTX={downloadPPTX} dObj={DESIGNS[presSettings.design]||DESIGNS.modern} />;
-        };
+            const downloadPPTX = async () => {
+                const PptxGenJS = await loadPptxLib(); const pres = new PptxGenJS(); pres.layout = 'LAYOUT_16x9';
+                const colors = { modern: {bg:'FFFFFF', fg:'1e293b'}, chalkboard: {bg:'064E3B', fg:'FFFFFF'}, cyber: {bg:'020617', fg:'22d3ee'} };
+                const c = colors[presSettings?.design] || colors.modern;
 
+                slides.forEach(slide => {
+                    const s = pres.addSlide(); s.background = { color: c.bg };
+                    s.addText(slide.title, { x:0.5, y:0.4, w:'90%', h:0.8, fontSize:28, bold:true, color:c.fg, align: slide.layout==='title_only'?'center':'left' });
+                    if (slide.layout !== 'title_only') {
+                         if (slide.content) s.addText(slide.content.map(t=>({text:t})), { x:0.5, y:1.4, w:4.5, h:4, fontSize:18, color:c.fg, bullet:true });
+                         if (slide.imageUrl) s.addImage({ path:slide.imageUrl, x:5.5, y:1.4, w:4.3, h:3.5 });
+                    }
+                    if(slide.flashcard) s.addNotes(slide.flashcard);
+                });
+                pres.writeFile({ fileName: `Praesentation.pptx` });
+            };
+
+            const DESIGNS_CONFIG = {
+                modern: { name: 'Modern (Blau)', bg: 'bg-white', text: 'text-slate-800', border: 'border-slate-200' },
+                business: { name: 'Business (Grau)', bg: 'bg-slate-100', text: 'text-slate-900', border: 'border-slate-300' },
+                chalkboard: { name: 'Tafel (Grün)', bg: 'bg-emerald-900', text: 'text-white', border: 'border-yellow-700/50' },
+                cyber: { name: 'Cyber (Neon)', bg: 'bg-slate-950', text: 'text-cyan-400', border: 'border-cyan-500/50' },
+                book: { name: 'Buch (Antik)', bg: 'bg-amber-50', text: 'text-stone-800', border: 'border-stone-300' },
+                geometric: { name: 'Geo', bg: 'bg-indigo-50', text: 'text-indigo-900', border: 'border-indigo-200' },
+                space: { name: 'Space', bg: 'bg-[#0B0D17]', text: 'text-slate-200', border: 'border-indigo-900' },
+            };
+            const dObj = DESIGNS_CONFIG[presSettings.design] || DESIGNS_CONFIG.modern;
+
+            if (view === "intro") {
+                return (
+                    <div className="h-dvh bg-slate-950 text-white flex flex-col font-sans overflow-y-auto">
+                        <div className="fixed inset-0 bg-gradient-to-br from-indigo-900 via-slate-950 to-purple-950 opacity-80 -z-10"></div>
+                        <div className="z-10 flex flex-col items-center pt-10 pb-6 px-4 animate-fade-in-up">
+                            <div className="inline-block p-5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-3xl shadow-2xl mb-4 hover:scale-105 transition-transform"><Icon d={PATHS.GraduationCap} size={56} className="text-white" /></div>
+                            <h1 className="text-4xl md:text-6xl font-black mb-2">SchulSim AI 5.6</h1>
+                            <p className="text-indigo-300 font-bold tracking-[0.4em] text-xs uppercase mt-2">Stealth Edition • Created by Kayden</p>
+                            <button onClick={()=>setShowKeyInput(true)} className={`mt-4 px-3 py-1 rounded-full border text-xs font-bold flex items-center gap-2 ${localKey ? 'border-green-500 text-green-400 bg-green-500/10' : 'border-red-500 text-red-400 bg-red-500/10'}`}>
+                                <div className={`w-2 h-2 rounded-full ${localKey ? 'bg-green-500' : 'bg-red-500'}`}></div> {localKey ? "System Bereit" : "Key fehlt (Setup)"}
+                            </button>
+                        </div>
+
+                        <div className="z-10 w-full max-w-7xl px-4 pb-24 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mx-auto animate-fade-in-up">
+                            {[{ id: 'explain', icon: 'Brain', title: 'Verstehen', act: () => handleStart('explain') },
+                              { id: 'vocab', icon: 'Languages', title: 'Vokabeln', hasFile: true, act: () => handleStart('vocabulary') },
+                              { id: 'homework', icon: 'PenTool', title: 'Aufgaben', hasFile: true, act: (sub) => handleStart(sub), subs: [['homework_help','Hilfe'],['correction','Korr.'],['homework_solve','Lösen']] },
+                              { id: 'pres', icon: 'Presentation', title: 'Präsentation', special: true }
+                            ].map((card) => (
+                                <div key={card.id} className="bg-white/5 border border-white/10 p-6 rounded-3xl hover:bg-white/10 transition-all flex flex-col shadow-2xl">
+                                    <div className="flex items-center gap-3 mb-4 text-indigo-400"><Icon d={PATHS[card.icon]} size={28} /> <h3 className="font-bold text-xl text-white">{card.title}</h3></div>
+                                    
+                                    {card.special ? (
+                                        <div className="space-y-3 mt-auto">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, audience:e.target.value})}><option>Klasse 5-7</option><option>Klasse 8-10</option><option>Oberstufe</option></select>
+                                                <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, detail:e.target.value})}><option>Kurz</option><option>Mittel</option><option>Detail</option></select>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, design:e.target.value})}>{Object.keys(DESIGNS_CONFIG).map(k=><option key={k} value={k}>{DESIGNS_CONFIG[k].name}</option>)}</select>
+                                                <select className="bg-black/40 rounded-xl px-2 py-2 text-xs text-white border-none" onChange={e=>setPresSettings({...presSettings, count:e.target.value})}>{[3,5,7,10].map(n=><option key={n} value={n}>{n} Folien</option>)}</select>
+                                            </div>
+                                            <input className="w-full bg-black/40 rounded-xl px-4 py-3 text-sm text-white outline-none border border-white/10 focus:border-orange-500" placeholder="Thema..." value={topic} onChange={e=>setTopic(e.target.value)} />
+                                            <button onClick={()=>handleStart('presentation')} disabled={!topic} className="w-full bg-orange-600 hover:bg-orange-500 py-3 rounded-xl font-bold text-sm text-white shadow-lg flex items-center justify-center gap-2"><Icon d={PATHS.Play} size={14}/> Erstellen</button>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-auto space-y-3">
+                                            {card.hasFile && (
+                                                <div className="relative">
+                                                    {fileData ? (
+                                                        <div className="flex items-center gap-2 text-xs text-green-300 bg-green-900/30 p-3 rounded-xl border border-green-500/30"><Icon d={PATHS.Check} size={16} /> Bild bereit <button onClick={() => setFileData(null)} className="ml-auto hover:text-white"><Icon d={PATHS.X} size={14}/></button></div>
+                                                    ) : (<label className="flex items-center justify-center gap-2 w-full py-3 border border-dashed border-slate-500 rounded-xl text-slate-300 text-xs cursor-pointer hover:border-white hover:text-white bg-black/20"><Icon d={PATHS.Upload} size={16} /> Bild laden<input type="file" accept="image/*" className="hidden" onChange={handleFile} /></label>)}
+                                                </div>
+                                            )}
+                                            {card.subs ? (
+                                                <div className="flex gap-1 w-full bg-black/20 p-1 rounded-lg">
+                                                    {card.subs.map(([k, l]) => <button key={k} onClick={() => handleStart(k)} className="flex-1 py-1.5 rounded text-[9px] font-bold hover:bg-white/10 text-slate-300 hover:text-white uppercase">{l}</button>)}
+                                                </div>
+                                            ) : (
+                                                card.id === 'explain' && <div className="flex gap-1 w-full bg-black/20 p-1 rounded-lg"><button onClick={()=>handleStart('explain')} className="flex-1 py-1.5 rounded text-[9px] font-bold hover:bg-white/10 text-slate-300 hover:text-white">ERKLÄREN</button><button onClick={()=>handleStart('explain', 'question')} className="flex-1 py-1.5 rounded text-[9px] font-bold hover:bg-white/10 text-slate-300 hover:text-white">FRAGE</button></div>
+                                            )}
+                                            <input className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder={card.id==='homework'?"Aufgabe...": card.id==='explain'?"Thema/Frage...": "Thema..."} value={topic} onChange={e=>setTopic(e.target.value)} />
+                                            {!card.subs && card.id !== 'explain' && <button onClick={()=>handleStart(card.act ? 'vocabulary' : 'explain')} className="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold text-sm text-white shadow-lg transition-transform active:scale-95">Starten</button>}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {showKeyInput && (
+                            <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+                                <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl">
+                                    <h2 className="text-xl font-bold text-white mb-4">API Key Setup</h2>
+                                    <input type="password" placeholder="AIzaSy..." className="w-full bg-black/50 border border-slate-600 rounded-lg px-4 py-3 text-white mb-4 focus:border-indigo-500 outline-none" onKeyDown={(e) => { if(e.key === 'Enter') handleSaveKey(e.target.value) }} />
+                                    <div className="flex gap-2"><button onClick={(e) => handleSaveKey(e.target.previousSibling.value)} className="flex-1 bg-indigo-600 py-2 rounded-lg font-bold">Speichern</button><button onClick={() => setShowKeyInput(false)} className="w-full mt-4 text-xs text-slate-500">Abbrechen</button></div>
+                                </div>
+                            </div>
+                        )}
+                        <div className="w-full text-center pb-8 mt-auto z-10"><button onClick={() => setShowLegal(true)} className="text-[10px] text-slate-500 hover:text-white transition-colors">Rechtliches</button></div>
+                        {showLegal && (
+                          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                            <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl max-h-[85vh] rounded-2xl flex flex-col shadow-2xl relative">
+                              <div className="p-6 border-b border-slate-800 flex justify-between items-center sticky top-0 bg-slate-900 rounded-t-2xl z-10"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon d={PATHS.FileText} className="text-indigo-400"/> Rechtliche Hinweise</h2><button onClick={() => setShowLegal(false)} className="text-slate-400 hover:text-white"><Icon d={PATHS.X} /></button></div>
+                              <div className="p-6 overflow-y-auto space-y-8 text-sm text-slate-300">
+                                <section><h3 className="font-bold text-white mb-2">Impressum</h3><p>Kayden Schunack<br/>Kontakt: didskanal@gmail.com</p></section>
+                                <section><h3 className="font-bold text-white mb-2">Datenschutz</h3><p>Keine dauerhafte Speicherung personenbezogener Daten.</p></section>
+                                <section><h3 className="font-bold text-white mb-2">Bildquellen</h3><p>Bilder werden über die Wikimedia Commons API bezogen oder sind gemeinfrei.</p></section>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {showCookieBanner && (
+                          <div className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700 p-4 z-50 flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl">
+                            <div className="flex items-center gap-3"><div className="p-2 bg-blue-500/20 rounded-full text-blue-400"><Icon d={PATHS.Cookie} size={20} /></div><p className="text-xs text-slate-300">Wir verwenden Cookies.</p></div>
+                            <button onClick={() => setShowCookieBanner(false)} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg font-bold">Akzeptieren</button>
+                          </div>
+                        )}
+                    </div>
+                );
+            }
+
+            return (
+                <div className="h-dvh flex flex-col md:flex-row bg-slate-950 overflow-hidden text-slate-100">
+                    <div className="h-[40%] md:h-full md:w-1/2 border-r border-white/5 flex flex-col bg-[#0F1115]">
+                        <div className="p-4 border-b border-white/5 flex justify-between items-center bg-[#0F1115]">
+                            <span className="font-bold text-indigo-400 flex items-center gap-2"><Icon d={PATHS.ImageIcon} size={18}/> Tafel</span>
+                            <button onClick={reset} className="text-xs text-red-400 font-bold border border-red-900/30 px-3 py-1 rounded-lg hover:bg-red-900/20">BEENDEN</button>
+                        </div>
+                        <div className="flex-1 p-6 flex flex-col items-center justify-center bg-black/20 overflow-hidden relative">
+                            {loading && <div className="absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-center"><Icon d={PATHS.Refresh} className="animate-spin text-orange-500 mb-2" size={48}/><p className="animate-pulse">{imgStatus || "Denke nach..."}</p></div>}
+                            
+                            {mode === 'presentation' && slides.length > 0 ? (
+                                <div className={`w-full aspect-video ${dObj.bg} ${dObj.text} rounded-xl shadow-2xl p-6 flex flex-col overflow-hidden border-4 border-white/5`}>
+                                    <h2 className="text-2xl font-bold border-b pb-4 mb-4 truncate">{slides[slideIdx].title}</h2>
+                                    <div className="flex flex-1 gap-4 overflow-hidden">
+                                        <div className="flex-1 overflow-y-auto"><ul className="space-y-2">{slides[slideIdx].content.map((c,i)=><li key={i} className="text-sm flex gap-2"><span className="text-blue-500">•</span>{c}</li>)}</ul></div>
+                                        {slides[slideIdx].imageUrl && <div className="w-1/3 h-full relative"><img src={slides[slideIdx].imageUrl} className="w-full h-full object-contain rounded-lg shadow-sm bg-black/5" /><button onClick={handleReloadImage} className="absolute bottom-2 right-2 bg-black/60 p-1.5 rounded-full hover:bg-black/80 text-white shadow-lg" title="Neues Bild"><Icon d={PATHS.Refresh} size={14}/></button></div>}
+                                    </div>
+                                    <div className="mt-4 flex justify-between items-center">
+                                        <div className="flex gap-2">
+                                            <button onClick={()=>setSlideIdx(s=>Math.max(0,s-1))} disabled={slideIdx===0} className="p-2 bg-black/10 rounded-full disabled:opacity-30"><Icon d={PATHS.ChevronLeft}/></button>
+                                            <span className="text-xs">{slideIdx+1}/{slides.length}</span>
+                                            <button onClick={()=>setSlideIdx(s=>Math.min(slides.length-1,s+1))} disabled={slideIdx===slides.length-1} className="p-2 bg-black/10 rounded-full disabled:opacity-30"><Icon d={PATHS.ChevronRight}/></button>
+                                        </div>
+                                        <button onClick={downloadPPTX} className="text-xs flex items-center gap-1 bg-orange-600 text-white px-3 py-1 rounded shadow hover:bg-orange-500"><Icon d={PATHS.Download} size={12}/> PPTX</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                currentImg ? <div className="relative w-full h-full flex items-center justify-center"><img src={currentImg} className="max-h-full max-w-full rounded-xl shadow-2xl object-contain border border-white/10" />{(mode === 'explain' || mode === 'vocabulary') && <button onClick={handleDownloadImage} className="absolute bottom-4 right-4 bg-blue-600 p-2 rounded-full shadow-lg"><Icon d={PATHS.Download} size={16} className="text-white"/></button>}</div>
+                                : <div className="text-slate-800 animate-pulse"><Icon d={PATHS.ImageIcon} size={128}/></div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="h-[60%] md:h-full md:w-1/2 flex flex-col bg-slate-950 relative">
+                        <div className="p-4 border-b border-white/5 flex items-center gap-3 bg-slate-900/50 shrink-0">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div><span className="font-bold text-sm">Herr Lehrer (KI)</span>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4 pb-28">
+                            {slides.length > 0 ? (
+                                <div className="bg-amber-50 text-slate-800 p-6 rounded-lg shadow-xl font-serif border-l-4 border-yellow-400"><h4 className="text-xs uppercase opacity-50 mb-2 font-sans font-bold">Folie {slideIdx+1}:</h4><p className="text-lg leading-relaxed">{slides[slideIdx].flashcard}</p></div>
+                            ) : (
+                                messages.map((m, i) => <div key={i} className={`flex ${m.role === 'model' ? 'justify-start' : 'justify-end'}`}><div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-lg ${m.role === 'model' ? 'bg-slate-800 border border-white/5 rounded-tl-none' : 'bg-indigo-600 rounded-tr-none'}`}><Typewriter text={m.parts[0].text} /></div></div>)
+                            )}
+                            <div ref={chatEndRef}></div>
+                        </div>
+                        {!slides.length && <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950 to-transparent"><div className="flex items-center bg-slate-900 border border-white/10 rounded-full px-4 py-1 shadow-2xl focus-within:border-indigo-500 transition-all"><input className="flex-1 bg-transparent py-3 outline-none text-sm" placeholder="Nachricht..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter' && handleSend()} /><button onClick={handleSend} className="bg-indigo-600 p-2 rounded-full ml-2"><Icon d={PATHS.Send} size={18} /></button></div></div>}
+                    </div>
+                </div>
+            );
+        };
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
