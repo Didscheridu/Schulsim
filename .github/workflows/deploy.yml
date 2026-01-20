@@ -28,9 +28,18 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Inject API Key
-        # Hier passiert die Magie: Der Platzhalter wird durch das Secret ersetzt
+        env:
+          # Wir laden den Key sicher in eine Umgebungsvariable
+          MY_SECRET_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          sed -i "s|__GEMINI_API_KEY__|${{ secrets.GEMINI_API_KEY }}|g" index.html
+          # Prüfen, ob der Key existiert
+          if [ -z "$MY_SECRET_KEY" ]; then
+            echo "ACHTUNG: Secret GEMINI_API_KEY wurde nicht gefunden!"
+          else
+            # Ersetze den Platzhalter sicher durch den Key
+            sed -i "s|__GEMINI_API_KEY__|$MY_SECRET_KEY|g" index.html
+            echo "Key wurde erfolgreich eingefügt."
+          fi
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
